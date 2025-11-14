@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservas - Biblioteca Uniasselvi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .reserva-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: 100%;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .reserva-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+        .badge-ativa { background-color: #28a745; }
+        .badge-concluida { background-color: #6c757d; }
+        .badge-cancelada { background-color: #dc3545; }
+        .badge-expirada { background-color: #ffc107; color: #000; }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            border: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border: none;
+            font-weight: 500;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2980b9, #3498db);
+            transform: translateY(-1px);
+        }
+        .expirada-soon {
+            border-left: 4px solid #ffc107;
+            background-color: #fff3cd;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="dashboard.html">
+                <i class="fas fa-book-open me-2"></i>
+                Biblioteca Uniasselvi
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard.html">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="acervo.html">
+                            <i class="fas fa-book me-1"></i>Acervo
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="emprestimos.html">
+                            <i class="fas fa-exchange-alt me-1"></i>Empréstimos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="reservas.html">
+                            <i class="fas fa-calendar-check me-1"></i>Reservas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="usuarios.html">
+                            <i class="fas fa-users me-1"></i>Usuários
+                        </a>
+                    </li>
+                </ul>
+                
+                <div class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="fas fa-user me-1"></i>Admin
+                        </a>
+                    </li>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        <!-- Cabeçalho -->
+        <div class="row mb-4">
+            <div class="col">
+                <h1 class="h3">
+                    <i class="fas fa-calendar-check me-2"></i>Gestão de Reservas
+                </h1>
+                <p class="text-muted">Controle de reservas de livros e notificações</p>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary" onclick="abrirModalNovaReserva()">
+                    <i class="fas fa-plus me-2"></i>Nova Reserva
+                </button>
+            </div>
+        </div>
+
+        <!-- Cards de Estatísticas -->
+        <div id="stats-container" class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="stats-card p-3">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 id="total-reservas">0</h4>
+                            <p class="mb-0">Total de Reservas</p>
+                        </div>
+                        <i class="fas fa-calendar-check fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card p-3" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 id="reservas-ativas">0</h4>
+                            <p class="mb-0">Ativas</p>
+                        </div>
+                        <i class="fas fa-clock fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card p-3" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 id="reservas-hoje">0</h4>
+                            <p class="mb-0">Vencem Hoje</p>
+                        </div>
+                        <i class="fas fa-exclamation-triangle fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stats-card p-3" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 id="livros-reservados">0</h4>
+                            <p class="mb-0">Livros Reservados</p>
+                        </div>
+                        <i class="fas fa-book fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros e Busca -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <input type="text" id="buscaInput" class="form-control" placeholder="Buscar por usuário, livro ou matrícula..." onkeyup="filtrarReservas()">
+                    <button class="btn btn-outline-secondary" type="button" onclick="filtrarReservas()">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="btn-group w-100">
+                    <button class="btn btn-outline-primary active" onclick="filtrarPorStatus('todos')">
+                        Todos
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="filtrarPorStatus('ativa')">
+                        Ativas
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="filtrarPorStatus('concluida')">
+                        Concluídas
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="filtrarPorStatus('cancelada')">
+                        Canceladas
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="text-center my-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p>Carregando reservas...</p>
+        </div>
+
+        <!-- Mensagem de Erro -->
+        <div id="error-message" class="alert alert-danger d-none" role="alert"></div>
+
+        <!-- Contador de Resultados -->
+        <div id="contador-resultados" class="mb-3 text-muted"></div>
+
+        <!-- Lista de Reservas -->
+        <div id="reservas-container" class="row"></div>
+    </div>
+
+    <!-- Modal Nova Reserva -->
+    <div class="modal fade" id="modalReserva" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nova Reserva</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formReserva">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Usuário *</label>
+                                    <select class="form-select" id="usuario_id" required onchange="atualizarInfoUsuario()">
+                                        <option value="">Selecione um usuário...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Livro *</label>
+                                    <select class="form-select" id="livro_id" required onchange="atualizarInfoLivro()">
+                                        <option value="">Selecione um livro...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+<div class="row">
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label class="form-label">Data da Reserva *</label>
+            <input type="date" class="form-control" id="data_reserva" required>
+            <div class="form-text">Data a partir da qual a reserva é válida</div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label class="form-label">Validade da Reserva *</label>
+            <input type="date" class="form-control" id="data_validade" required>
+            <div class="form-text">A reserva expira nesta data (máximo 7 dias a partir da data da reserva)</div>
+        </div>
+    </div>
+</div>
+                        <div class="mb-3">
+                            <label class="form-label">Observações</label>
+                            <textarea class="form-control" id="observacoes" rows="3" placeholder="Observações adicionais..."></textarea>
+                        </div>
+                        <div id="info-usuario" class="alert alert-info d-none"></div>
+                        <div id="info-livro" class="alert alert-info d-none"></div>
+                        <div id="erro-reserva" class="alert alert-danger d-none"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarReserva()">
+                        <span id="btnSalvarText">Salvar Reserva</span>
+                        <span id="btnSalvarLoading" class="d-none">
+                            <span class="loading-spinner"></span> Salvando...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        let todasReservas = [];
+        let todosUsuarios = [];
+        let todosLivros = [];
+        let filtroAtual = 'todos';
+        let termoBusca = '';
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📅 Módulo de Reservas carregado!');
+            carregarDadosIniciais();
+        });
+
+        // Carregar dados iniciais
+        async function carregarDadosIniciais() {
+            try {
+                mostrarLoading(true);
+                esconderErro();
+
+                // Carregar reservas, usuários e livros em paralelo
+                await Promise.all([
+                    carregarReservas(),
+                    carregarUsuarios(),
+                    carregarLivros()
+                ]);
+
+                mostrarLoading(false);
+
+            } catch (error) {
+                console.error('❌ Erro ao carregar dados:', error);
+                mostrarErro(`Falha ao carregar dados: ${error.message}`);
+                mostrarLoading(false);
+            }
+        }
+
+        // Carregar reservas da API
+        async function carregarReservas() {
+            try {
+                console.log('🔄 Carregando reservas...');
+                const response = await fetch(`${API_BASE}/reservas`);
+                
+                if (!response.ok) {
+                    // Se a API de reservas não existir ainda, usar dados simulados
+                    console.log('API de reservas não disponível, usando dados simulados');
+                    await simularCarregamentoReservas();
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('📊 Dados de reservas:', data);
+
+                if (data.success) {
+                    todasReservas = data.data;
+                    atualizarEstatisticas();
+                    aplicarFiltros();
+                } else {
+                    throw new Error(data.error || 'Erro ao carregar reservas');
+                }
+
+            } catch (error) {
+                console.error('Erro ao carregar reservas:', error);
+                // Usar dados simulados em caso de erro
+                await simularCarregamentoReservas();
+            }
+        }
+
+        // Carregar usuários da API
+        async function carregarUsuarios() {
+            try {
+                const response = await fetch(`${API_BASE}/usuarios`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    todosUsuarios = data.data;
+                    console.log(`✅ ${todosUsuarios.length} usuários carregados`);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar usuários:', error);
+            }
+        }
+
+        // Carregar livros da API
+        async function carregarLivros() {
+            try {
+                const response = await fetch(`${API_BASE}/livros`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    todosLivros = data.data;
+                    console.log(`✅ ${todosLivros.length} livros carregados`);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar livros:', error);
+            }
+        }
+
+        // Simular dados de reservas (remover quando API estiver pronta)
+        async function simularCarregamentoReservas() {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    todasReservas = [
+                        {
+                            id: 1,
+                            usuario_id: 1,
+                            usuario_nome: "João Silva",
+                            usuario_matricula: "2023001",
+                            livro_id: 1,
+                            livro_titulo: "Dom Casmurro",
+                            livro_autor: "Machado de Assis",
+                            data_reserva: new Date().toISOString().split('T')[0],
+                            data_validade: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                            status: "ativa",
+                            observacoes: "Reserva para trabalho acadêmico"
+                        },
+                        {
+                            id: 2,
+                            usuario_id: 2,
+                            usuario_nome: "Maria Santos",
+                            usuario_matricula: "2023002",
+                            livro_id: 2,
+                            livro_titulo: "O Cortiço",
+                            livro_autor: "Aluísio Azevedo",
+                            data_reserva: "2024-01-10",
+                            data_validade: "2024-01-17",
+                            status: "concluida",
+                            observacoes: "Livro retirado com sucesso"
+                        },
+                        {
+                            id: 3,
+                            usuario_id: 3,
+                            usuario_nome: "Pedro Oliveira",
+                            usuario_matricula: "2023003",
+                            livro_id: 3,
+                            livro_titulo: "Iracema",
+                            livro_autor: "José de Alencar",
+                            data_reserva: "2024-01-12",
+                            data_validade: "2024-01-15",
+                            status: "cancelada",
+                            observacoes: "Usuário cancelou a reserva"
+                        }
+                    ];
+                    atualizarEstatisticas();
+                    aplicarFiltros();
+                    resolve();
+                }, 1000);
+            });
+        }
+
+        // Atualizar cards de estatísticas
+        function atualizarEstatisticas() {
+            const total = todasReservas.length;
+            const ativas = todasReservas.filter(r => r.status === 'ativa').length;
+            const hoje = new Date().toISOString().split('T')[0];
+            const vencemHoje = todasReservas.filter(r => r.data_validade === hoje && r.status === 'ativa').length;
+            const livrosReservados = [...new Set(todasReservas.filter(r => r.status === 'ativa').map(r => r.livro_titulo))].length;
+
+            document.getElementById('total-reservas').textContent = total;
+            document.getElementById('reservas-ativas').textContent = ativas;
+            document.getElementById('reservas-hoje').textContent = vencemHoje;
+            document.getElementById('livros-reservados').textContent = livrosReservados;
+        }
+
+        // Funções de busca e filtro
+        function filtrarReservas() {
+            termoBusca = document.getElementById('buscaInput').value.toLowerCase().trim();
+            aplicarFiltros();
+        }
+
+        function filtrarPorStatus(status) {
+            filtroAtual = status;
+            
+            // Atualizar botões ativos
+            document.querySelectorAll('.btn-group .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            aplicarFiltros();
+        }
+
+        function aplicarFiltros() {
+            let reservasFiltradas = [...todasReservas];
+
+            // Aplicar filtro de busca
+            if (termoBusca) {
+                reservasFiltradas = reservasFiltradas.filter(reserva => 
+                    (reserva.usuario_nome && reserva.usuario_nome.toLowerCase().includes(termoBusca)) ||
+                    (reserva.livro_titulo && reserva.livro_titulo.toLowerCase().includes(termoBusca)) ||
+                    (reserva.usuario_matricula && reserva.usuario_matricula.toLowerCase().includes(termoBusca)) ||
+                    (reserva.livro_autor && reserva.livro_autor.toLowerCase().includes(termoBusca))
+                );
+            }
+
+            // Aplicar filtro de status
+            if (filtroAtual !== 'todos') {
+                reservasFiltradas = reservasFiltradas.filter(reserva => reserva.status === filtroAtual);
+            }
+
+            // Atualizar contador
+            atualizarContadorResultados(reservasFiltradas.length);
+            
+            // Renderizar reservas filtradas
+            renderizarReservas(reservasFiltradas);
+        }
+
+        function atualizarContadorResultados(total) {
+            const contador = document.getElementById('contador-resultados');
+            let mensagem = '';
+            
+            if (termoBusca && filtroAtual !== 'todos') {
+                mensagem = `${total} reserva(s) encontrada(s) para "${termoBusca}" (${getLabelFiltro()})`;
+            } else if (termoBusca) {
+                mensagem = `${total} reserva(s) encontrada(s) para "${termoBusca}"`;
+            } else if (filtroAtual !== 'todos') {
+                mensagem = `${total} reserva(s) ${getLabelFiltro()}`;
+            } else {
+                mensagem = `${total} reserva(s) no total`;
+            }
+            
+            contador.innerHTML = `<i class="fas fa-filter me-1"></i>${mensagem}`;
+            contador.style.display = total === 0 ? 'none' : 'block';
+        }
+
+        function getLabelFiltro() {
+            const labels = {
+                'todos': 'todas',
+                'ativa': 'ativas',
+                'concluida': 'concluídas',
+                'cancelada': 'canceladas'
+            };
+            return labels[filtroAtual] || filtroAtual;
+        }
+
+        // Renderizar lista de reservas
+        function renderizarReservas(reservas) {
+            const container = document.getElementById('reservas-container');
+            const hoje = new Date();
+            
+            if (!reservas || reservas.length === 0) {
+                let mensagem = 'Nenhuma reserva encontrada.';
+                
+                if (termoBusca || filtroAtual !== 'todos') {
+                    mensagem = 'Nenhuma reserva corresponde aos filtros aplicados.';
+                    if (termoBusca) {
+                        mensagem += ` Tente buscar por outros termos.`;
+                    }
+                }
+                
+                container.innerHTML = `
+                    <div class="col-12 text-center py-5">
+                        <i class="fas fa-calendar-check fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">${mensagem}</h4>
+                        ${termoBusca || filtroAtual !== 'todos' ? `
+                            <button class="btn btn-outline-primary mt-2" onclick="limparFiltros()">
+                                <i class="fas fa-times me-1"></i>Limpar Filtros
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                return;
+            }
+
+            const html = reservas.map(reserva => {
+                const dataValidade = new Date(reserva.data_validade);
+                const diasRestantes = Math.ceil((dataValidade - hoje) / (1000 * 60 * 60 * 24));
+                const expiraEmBreve = diasRestantes <= 2 && diasRestantes >= 0 && reserva.status === 'ativa';
+                const expirada = diasRestantes < 0 && reserva.status === 'ativa';
+                
+                // Atualizar status se expirada
+                if (expirada && reserva.status === 'ativa') {
+                    reserva.status = 'expirada';
+                }
+                
+                return `
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card reserva-card h-100 ${expiraEmBreve ? 'expirada-soon' : ''}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title">${reserva.livro_titulo}</h6>
+                                    <span class="badge ${getBadgeClass(reserva.status)}">
+                                        ${getStatusLabel(reserva.status)}
+                                        ${expiraEmBreve ? ` (${diasRestantes}d)` : ''}
+                                    </span>
+                                </div>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <strong>👤 Usuário:</strong> ${reserva.usuario_nome}<br>
+                                        <strong>📋 Matrícula:</strong> ${reserva.usuario_matricula}<br>
+                                        <strong>✍️ Autor:</strong> ${reserva.livro_autor}<br>
+                                        <strong>📅 Reserva:</strong> ${new Date(reserva.data_reserva).toLocaleDateString('pt-BR')}<br>
+                                        <strong>⏰ Validade:</strong> ${new Date(reserva.data_validade).toLocaleDateString('pt-BR')}
+                                        ${expiraEmBreve ? `<span class="text-warning"> ⚠️ Expira em ${diasRestantes} dia(s)</span>` : ''}
+                                    </small>
+                                </p>
+                                ${reserva.observacoes ? `
+                                    <p class="mb-2"><small><strong>📝 Observações:</strong> ${reserva.observacoes}</small></p>
+                                ` : ''}
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">ID: ${reserva.id}</small>
+                                    <div>
+                                        ${reserva.status === 'ativa' ? `
+                                            <button class="btn btn-sm btn-success me-1" onclick="concluirReserva(${reserva.id})">
+                                                <i class="fas fa-check me-1"></i>Concluir
+                                            </button>
+                                            <button class="btn btn-sm btn-danger" onclick="cancelarReserva(${reserva.id})">
+                                                <i class="fas fa-times me-1"></i>Cancelar
+                                            </button>
+                                        ` : ''}
+                                        ${reserva.status === 'expirada' ? `
+                                            <button class="btn btn-sm btn-warning" onclick="reativarReserva(${reserva.id})">
+                                                <i class="fas fa-redo me-1"></i>Reativar
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
+        }
+
+        function getBadgeClass(status) {
+            const classes = {
+                'ativa': 'badge-ativa',
+                'concluida': 'badge-concluida',
+                'expirada': 'badge-expirada',
+                'cancelada': 'badge-cancelada'
+            };
+            return classes[status] || 'badge-secondary';
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                'ativa': 'Ativa',
+                'concluida': 'Concluída',
+                'expirada': 'Expirada',
+                'cancelada': 'Cancelada'
+            };
+            return labels[status] || status;
+        }
+
+        function limparFiltros() {
+            document.getElementById('buscaInput').value = '';
+            termoBusca = '';
+            filtroAtual = 'todos';
+            
+            // Resetar botões
+            document.querySelectorAll('.btn-group .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector('.btn-group .btn:first-child').classList.add('active');
+            
+            aplicarFiltros();
+        }
+// Modal functions
+async function abrirModalNovaReserva() {
+    const modal = new bootstrap.Modal(document.getElementById('modalReserva'));
+    
+    // Limpar formulário
+    document.getElementById('formReserva').reset();
+    
+    // Configurar data mínima (hoje)
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    const hojeFormatado = `${ano}-${mes}-${dia}`;
+    
+    // Configurar data padrão da reserva (hoje)
+    const dataReservaInput = document.getElementById('data_reserva');
+    dataReservaInput.value = hojeFormatado;
+    dataReservaInput.min = hojeFormatado;
+    
+    // Configurar data de validade padrão (3 dias a partir de hoje)
+    const dataValidade = new Date(hoje);
+    dataValidade.setDate(hoje.getDate() + 3);
+    const anoValidade = dataValidade.getFullYear();
+    const mesValidade = String(dataValidade.getMonth() + 1).padStart(2, '0');
+    const diaValidade = String(dataValidade.getDate()).padStart(2, '0');
+    const dataValidadeFormatada = `${anoValidade}-${mesValidade}-${diaValidade}`;
+    
+    const dataValidadeInput = document.getElementById('data_validade');
+    dataValidadeInput.value = dataValidadeFormatada;
+    dataValidadeInput.min = hojeFormatado;
+    
+    // Configurar data máxima (7 dias a partir de hoje)
+    const dataMaxima = new Date(hoje);
+    dataMaxima.setDate(hoje.getDate() + 7);
+    const anoMaximo = dataMaxima.getFullYear();
+    const mesMaximo = String(dataMaxima.getMonth() + 1).padStart(2, '0');
+    const diaMaximo = String(dataMaxima.getDate()).padStart(2, '0');
+    const dataMaximaFormatada = `${anoMaximo}-${mesMaximo}-${diaMaximo}`;
+    
+    dataValidadeInput.max = dataMaximaFormatada;
+
+    // Adicionar evento para quando a data da reserva mudar
+    dataReservaInput.addEventListener('change', function() {
+        atualizarDatasValidade();
+    });
+
+    // Popular selects
+    const selectUsuario = document.getElementById('usuario_id');
+    selectUsuario.innerHTML = '<option value="">Selecione um usuário...</option>';
+    todosUsuarios.forEach(usuario => {
+        selectUsuario.innerHTML += `<option value="${usuario.id}">${usuario.matricula} - ${usuario.nome}</option>`;
+    });
+
+    const selectLivro = document.getElementById('livro_id');
+    selectLivro.innerHTML = '<option value="">Selecione um livro...</option>';
+    todosLivros.forEach(livro => {
+        if (livro.quantidade_disponivel > 0) {
+            selectLivro.innerHTML += `<option value="${livro.id}">${livro.titulo} - ${livro.autor} (${livro.quantidade_disponivel} disp.)</option>`;
+        }
+    });
+
+    // Limpar mensagens
+    document.getElementById('info-usuario').classList.add('d-none');
+    document.getElementById('info-livro').classList.add('d-none');
+    document.getElementById('erro-reserva').classList.add('d-none');
+
+    modal.show();
+}
+
+// Função para atualizar as datas de validade quando a data da reserva mudar
+function atualizarDatasValidade() {
+    const dataReserva = document.getElementById('data_reserva').value;
+    
+    if (!dataReserva) return;
+    
+    const dataReservaObj = new Date(dataReserva);
+    const dataValidadeInput = document.getElementById('data_validade');
+    
+    // Atualizar data mínima da validade (mesmo dia da reserva)
+    dataValidadeInput.min = dataReserva;
+    
+    // Atualizar data máxima da validade (7 dias após a data da reserva) - CÁLCULO CORRIGIDO
+    const dataMaxima = new Date(dataReservaObj);
+    dataMaxima.setDate(dataReservaObj.getDate() + 7);
+    const anoMaximo = dataMaxima.getFullYear();
+    const mesMaximo = String(dataMaxima.getMonth() + 1).padStart(2, '0');
+    const diaMaximo = String(dataMaxima.getDate()).padStart(2, '0');
+    const dataMaximaFormatada = `${anoMaximo}-${mesMaximo}-${diaMaximo}`;
+    
+    dataValidadeInput.max = dataMaximaFormatada;
+    
+    // Se a data de validade atual for anterior à data da reserva ou fora do limite, ajustar
+    const dataValidadeAtual = new Date(dataValidadeInput.value);
+    const dataValidadeAtualMs = dataValidadeAtual.getTime();
+    const dataReservaMs = dataReservaObj.getTime();
+    const dataMaximaMs = dataMaxima.getTime();
+    
+    if (dataValidadeAtualMs < dataReservaMs || dataValidadeAtualMs > dataMaximaMs) {
+        // Definir data de validade padrão (3 dias após a data da reserva)
+        const dataValidadePadrao = new Date(dataReservaObj);
+        dataValidadePadrao.setDate(dataReservaObj.getDate() + 3);
+        const anoPadrao = dataValidadePadrao.getFullYear();
+        const mesPadrao = String(dataValidadePadrao.getMonth() + 1).padStart(2, '0');
+        const diaPadrao = String(dataValidadePadrao.getDate()).padStart(2, '0');
+        const dataValidadePadraoFormatada = `${anoPadrao}-${mesPadrao}-${diaPadrao}`;
+        
+        dataValidadeInput.value = dataValidadePadraoFormatada;
+    }
+    
+    // Atualizar texto de ajuda
+    const ajudaElement = dataValidadeInput.nextElementSibling;
+    if (ajudaElement && ajudaElement.classList.contains('form-text')) {
+        const dataReservaFormatada = new Date(dataReserva).toLocaleDateString('pt-BR');
+        const dataMaximaFormatadaBR = new Date(dataMaximaFormatada).toLocaleDateString('pt-BR');
+        ajudaElement.textContent = `A reserva expira nesta data (período de 1 a 7 dias. Máximo: ${dataMaximaFormatadaBR})`;
+    }
+}
+
+        function atualizarInfoUsuario() {
+            const usuarioId = document.getElementById('usuario_id').value;
+            const infoDiv = document.getElementById('info-usuario');
+            
+            if (usuarioId) {
+                const usuario = todosUsuarios.find(u => u.id == usuarioId);
+                if (usuario) {
+                    infoDiv.innerHTML = `
+                        <strong>👤 Informações do Usuário:</strong><br>
+                        • Nome: ${usuario.nome}<br>
+                        • Matrícula: ${usuario.matricula}<br>
+                        • Tipo: ${usuario.tipo || 'Não informado'}<br>
+                        • Email: ${usuario.email || 'Não informado'}
+                    `;
+                    infoDiv.classList.remove('d-none');
+                }
+            } else {
+                infoDiv.classList.add('d-none');
+            }
+        }
+
+        function atualizarInfoLivro() {
+            const livroId = document.getElementById('livro_id').value;
+            const infoDiv = document.getElementById('info-livro');
+            
+            if (livroId) {
+                const livro = todosLivros.find(l => l.id == livroId);
+                if (livro) {
+                    infoDiv.innerHTML = `
+                        <strong>📚 Informações do Livro:</strong><br>
+                        • Título: ${livro.titulo}<br>
+                        • Autor: ${livro.autor}<br>
+                        • Disponível: ${livro.quantidade_disponivel} exemplar(es)<br>
+                        • Categoria: ${livro.categoria || 'Não informada'}<br>
+                        • Localização: ${livro.localizacao || 'Não informada'}
+                    `;
+                    infoDiv.classList.remove('d-none');
+                }
+            } else {
+                infoDiv.classList.add('d-none');
+            }
+        }
+        
+// Validar que a data de validade é posterior à data da reserva
+const dataReserva = new Date(reservaData.data_reserva);
+const dataValidade = new Date(reservaData.data_validade);
+
+if (dataValidade <= dataReserva) {
+    throw new Error('A data de validade deve ser posterior à data da reserva');
+}
+
+// Validar que não ultrapassa 7 dias - CÁLCULO CORRIGIDO
+const diferencaMs = dataValidade.getTime() - dataReserva.getTime();
+const diferencaDias = Math.ceil(diferencaMs / (1000 * 60 * 60 * 24));
+
+console.log('Data reserva:', dataReserva.toLocaleDateString('pt-BR'));
+console.log('Data validade:', dataValidade.toLocaleDateString('pt-BR'));
+console.log('Diferença em dias:', diferencaDias);
+
+if (diferencaDias > 7) {
+    throw new Error(`A reserva não pode ter validade superior a 7 dias. Período selecionado: ${diferencaDias} dias`);
+}
+
+if (diferencaDias < 1) {
+    throw new Error('A validade deve ser de pelo menos 1 dia');
+}
+
+        async function salvarReserva() {
+            const form = document.getElementById('formReserva');
+            const erroDiv = document.getElementById('erro-reserva');
+            
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const reservaData = {
+                usuario_id: document.getElementById('usuario_id').value,
+                livro_id: document.getElementById('livro_id').value,
+                data_reserva: document.getElementById('data_reserva').value,
+                data_validade: document.getElementById('data_validade').value,
+                observacoes: document.getElementById('observacoes').value,
+                status: 'ativa'
+            };
+
+            try {
+                mostrarBtnLoading(true);
+                erroDiv.classList.add('d-none');
+
+                // Verificar se já existe reserva ativa para o mesmo livro
+                const reservaExistente = todasReservas.find(r => 
+                    r.livro_id == reservaData.livro_id && 
+                    r.status === 'ativa'
+                );
+
+                if (reservaExistente) {
+                    throw new Error('Este livro já possui uma reserva ativa');
+                }
+
+
+
+
+
+                
+                // Fazer requisição para a API
+                const response = await fetch(`${API_BASE}/reservas`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(reservaData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Fechar modal e recarregar dados
+                    bootstrap.Modal.getInstance(document.getElementById('modalReserva')).hide();
+                    await carregarReservas();
+                    alert('✅ Reserva criada com sucesso!');
+                } else {
+                    throw new Error(data.error || 'Erro ao criar reserva');
+                }
+
+            } catch (error) {
+                console.error('❌ Erro ao salvar reserva:', error);
+                erroDiv.textContent = error.message;
+                erroDiv.classList.remove('d-none');
+            } finally {
+                mostrarBtnLoading(false);
+            }
+        }
+
+        async function concluirReserva(id) {
+            if (confirm('Confirmar conclusão desta reserva? O livro será marcado como retirado.')) {
+                try {
+                    // Atualizar status da reserva para concluída
+                    const response = await fetch(`${API_BASE}/reservas/${id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ status: 'concluida' })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        await carregarReservas();
+                        alert('✅ Reserva concluída com sucesso!');
+                    } else {
+                        throw new Error(data.error || 'Erro ao concluir reserva');
+                    }
+                } catch (error) {
+                    console.error('Erro ao concluir reserva:', error);
+                    alert('❌ Erro ao concluir reserva: ' + error.message);
+                }
+            }
+        }
+
+        async function cancelarReserva(id) {
+            if (confirm('Tem certeza que deseja cancelar esta reserva?')) {
+                try {
+                    const response = await fetch(`${API_BASE}/reservas/${id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ status: 'cancelada' })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        await carregarReservas();
+                        alert('✅ Reserva cancelada com sucesso!');
+                    } else {
+                        throw new Error(data.error || 'Erro ao cancelar reserva');
+                    }
+                } catch (error) {
+                    console.error('Erro ao cancelar reserva:', error);
+                    alert('❌ Erro ao cancelar reserva: ' + error.message);
+                }
+            }
+        }
+
+        async function reativarReserva(id) {
+            if (confirm('Deseja reativar esta reserva expirada?')) {
+                try {
+                    const novaDataValidade = new Date();
+                    novaDataValidade.setDate(novaDataValidade.getDate() + 3);
+                    
+                    const response = await fetch(`${API_BASE}/reservas/${id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            status: 'ativa',
+                            data_validade: novaDataValidade.toISOString().split('T')[0]
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        await carregarReservas();
+                        alert('✅ Reserva reativada com sucesso!');
+                    } else {
+                        throw new Error(data.error || 'Erro ao reativar reserva');
+                    }
+                } catch (error) {
+                    console.error('Erro ao reativar reserva:', error);
+                    alert('❌ Erro ao reativar reserva: ' + error.message);
+                }
+            }
+        }
+
+        // Funções auxiliares
+        function mostrarLoading(mostrar) {
+            document.getElementById('loading').style.display = mostrar ? 'block' : 'none';
+            document.getElementById('stats-container').style.display = mostrar ? 'none' : 'block';
+            document.getElementById('reservas-container').style.display = mostrar ? 'none' : 'block';
+            document.getElementById('contador-resultados').style.display = mostrar ? 'none' : 'block';
+        }
+
+        function mostrarErro(mensagem) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = mensagem;
+            errorDiv.classList.remove('d-none');
+        }
+
+        function esconderErro() {
+            document.getElementById('error-message').classList.add('d-none');
+        }
+
+        function mostrarBtnLoading(mostrar) {
+            document.getElementById('btnSalvarText').classList.toggle('d-none', mostrar);
+            document.getElementById('btnSalvarLoading').classList.toggle('d-none', !mostrar);
+        }
+    </script>
+</body>
+</html>

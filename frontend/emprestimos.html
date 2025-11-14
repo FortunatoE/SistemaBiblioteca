@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📖 Empréstimos - Biblioteca</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .emprestimo-card { transition: transform 0.2s; }
+        .emprestimo-card:hover { transform: translateY(-2px); }
+        .badge-ativo { background-color: #28a745; }
+        .badge-devolvido { background-color: #6c757d; }
+        .badge-atrasado { background-color: #dc3545; }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .multa-alerta {
+            border-left: 4px solid #dc3545;
+            background-color: #f8d7da;
+        }
+    </style>
+</head>
+<body>
+<!-- Navbar - emprestimos.html -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="index.html">
+            <i class="fas fa-book"></i>
+            <strong>Biblioteca Uniasselvi</strong>
+        </a>
+        
+        <div class="navbar-nav">
+            <a class="nav-link" href="index.html">
+                <i class="fas fa-home me-1"></i>Dashboard
+            </a>
+            <a class="nav-link" href="usuarios.html">
+                <i class="fas fa-users me-1"></i>Usuários
+            </a>
+            <a class="nav-link active" href="emprestimos.html">
+                <i class="fas fa-hand-holding me-1"></i>Empréstimos
+            </a>
+            <a class="nav-link" href="gestao-acervo.html">
+                <i class="fas fa-book-open me-1"></i>Acervo
+            </a>
+        </div>
+    </div>
+</nav>
+
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1><i class="fas fa-hand-holding me-2"></i>Gestão de Empréstimos</h1>
+                <p class="lead">Controle de empréstimos, devoluções e multas</p>
+            </div>
+        </div>
+
+        <!-- Controles -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <input type="text" id="buscaInput" class="form-control" placeholder="Buscar por usuário ou livro...">
+                    <button class="btn btn-outline-secondary" type="button" onclick="filtrarEmprestimos()">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6 text-end">
+                <button class="btn btn-success" onclick="abrirModalNovoEmprestimo()">
+                    <i class="fas fa-plus me-2"></i>Novo Empréstimo
+                </button>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="btn-group">
+                    <button class="btn btn-outline-primary active" onclick="filtrarPorStatus('todos')">
+                        Todos
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="filtrarPorStatus('ativo')">
+                        Ativos
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="filtrarPorStatus('devolvido')">
+                        Devolvidos
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="filtrarPorStatus('atrasado')">
+                        Em Atraso
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="text-center my-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p>Carregando empréstimos...</p>
+        </div>
+
+        <!-- Mensagem de Erro -->
+        <div id="error-message" class="alert alert-danger d-none" role="alert"></div>
+
+        <!-- Estatísticas -->
+        <div id="estatisticas" class="row mb-4 d-none">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 id="total-emprestimos" class="text-primary">0</h3>
+                        <p class="text-muted">Total</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 id="emprestimos-ativos" class="text-success">0</h3>
+                        <p class="text-muted">Ativos</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 id="emprestimos-atraso" class="text-danger">0</h3>
+                        <p class="text-muted">Em Atraso</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 id="total-multas" class="text-warning">R$ 0</h3>
+                        <p class="text-muted">Multas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Empréstimos -->
+        <div id="emprestimos-container" class="row"></div>
+    </div>
+
+    <!-- Modal Novo Empréstimo -->
+    <div class="modal fade" id="modalEmprestimo" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Novo Empréstimo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEmprestimo">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Usuário *</label>
+                                    <select class="form-select" id="usuario_id" required>
+                                        <option value="">Selecione um usuário...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Livro *</label>
+                                    <select class="form-select" id="livro_id" required>
+                                        <option value="">Selecione um livro...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Data de Devolução Prevista</label>
+                            <input type="date" class="form-control" id="data_devolucao_prevista">
+                            <div class="form-text">Deixe em branco para 15 dias a partir de hoje</div>
+                        </div>
+                        <div id="info-usuario" class="alert alert-info d-none"></div>
+                        <div id="info-livro" class="alert alert-info d-none"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="realizarEmprestimo()">
+                        <span id="btnEmprestimoText">Realizar Empréstimo</span>
+                        <span id="btnEmprestimoLoading" class="d-none">
+                            <span class="loading-spinner"></span> Processando...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        class GestaoEmprestimos {
+            constructor() {
+                this.apiUrl = 'http://localhost:3000/api';
+                this.emprestimos = [];
+                this.usuarios = [];
+                this.livros = [];
+                this.filtroStatus = 'todos';
+                this.init();
+            }
+
+            async init() {
+                await this.carregarUsuarios();
+                await this.carregarLivros();
+                await this.carregarEmprestimos();
+            }
+
+            async carregarEmprestimos() {
+                try {
+                    const response = await fetch(`${this.apiUrl}/emprestimos`);
+                    
+                    if (!response.ok) throw new Error('API não respondeu');
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.emprestimos = data.data;
+                        this.exibirEmprestimos();
+                        this.exibirEstatisticas();
+                    } else {
+                        this.exibirErro('Erro: ' + data.error);
+                    }
+                } catch (error) {
+                    this.exibirErro('Não foi possível conectar com o servidor.');
+                }
+            }
+
+            async carregarUsuarios() {
+                try {
+                    const response = await fetch(`${this.apiUrl}/usuarios`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.usuarios = data.data;
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar usuários:', error);
+                }
+            }
+
+            async carregarLivros() {
+                try {
+                    const response = await fetch(`${this.apiUrl}/livros`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.livros = data.data.filter(livro => livro.quantidade_disponivel > 0);
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar livros:', error);
+                }
+            }
+
+            exibirEmprestimos(emprestimosFiltrados = null) {
+                const emprestimos = emprestimosFiltrados || this.emprestimos;
+                const container = document.getElementById('emprestimos-container');
+                const loading = document.getElementById('loading');
+                
+                loading.classList.add('d-none');
+                document.getElementById('estatisticas').classList.remove('d-none');
+
+                if (emprestimos.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-12">
+                            <div class="alert alert-info text-center">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Nenhum empréstimo encontrado.
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const html = emprestimos.map(emp => {
+                    const hoje = new Date();
+                    const dataPrevista = new Date(emp.data_devolucao_prevista);
+                    const estaAtrasado = emp.status === 'ativo' && hoje > dataPrevista;
+                    const temMulta = emp.multa > 0;
+
+                    return `
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card emprestimo-card h-100 ${temMulta ? 'multa-alerta' : ''}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="card-title">${emp.livro_titulo}</h6>
+                                        <span class="badge ${this.getBadgeClass(emp.status, estaAtrasado)}">
+                                            ${this.getStatusLabel(emp.status, estaAtrasado)}
+                                        </span>
+                                    </div>
+                                    <p class="card-text">
+                                        <strong>👤 Usuário:</strong> ${emp.usuario_nome}<br>
+                                        <strong>📋 Matrícula:</strong> ${emp.usuario_matricula}<br>
+                                        <strong>✍️ Autor:</strong> ${emp.livro_autor}<br>
+                                        <strong>📅 Empréstimo:</strong> ${new Date(emp.data_emprestimo).toLocaleDateString('pt-BR')}<br>
+                                        <strong>📆 Devolução:</strong> ${new Date(emp.data_devolucao_prevista).toLocaleDateString('pt-BR')}
+                                        ${estaAtrasado ? '<span class="text-danger">⚠️ Atrasado</span>' : ''}
+                                    </p>
+                                    ${emp.data_devolucao_efetiva ? `
+                                        <p><strong>✅ Devolvido em:</strong> ${new Date(emp.data_devolucao_efetiva).toLocaleDateString('pt-BR')}</p>
+                                    ` : ''}
+                                    ${temMulta ? `
+                                        <p class="text-danger"><strong>💵 Multa:</strong> R$ ${parseFloat(emp.multa).toFixed(2)}</p>
+                                    ` : ''}
+                                </div>
+                                <div class="card-footer">
+                                    <small class="text-muted">ID: ${emp.id}</small>
+                                    ${emp.status === 'ativo' ? `
+                                        <button class="btn btn-sm btn-success float-end" onclick="registrarDevolucao(${emp.id})">
+                                            <i class="fas fa-check me-1"></i>Devolver
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = html;
+            }
+
+            exibirEstatisticas() {
+                const total = this.emprestimos.length;
+                const ativos = this.emprestimos.filter(emp => emp.status === 'ativo').length;
+                const atrasados = this.emprestimos.filter(emp => {
+                    const hoje = new Date();
+                    const dataPrevista = new Date(emp.data_devolucao_prevista);
+                    return emp.status === 'ativo' && hoje > dataPrevista;
+                }).length;
+                const totalMultas = this.emprestimos.reduce((sum, emp) => sum + parseFloat(emp.multa || 0), 0);
+
+                document.getElementById('total-emprestimos').textContent = total;
+                document.getElementById('emprestimos-ativos').textContent = ativos;
+                document.getElementById('emprestimos-atraso').textContent = atrasados;
+                document.getElementById('total-multas').textContent = `R$ ${totalMultas.toFixed(2)}`;
+            }
+
+            getBadgeClass(status, estaAtrasado) {
+                if (estaAtrasado) return 'badge-atrasado';
+                const classes = {
+                    'ativo': 'badge-ativo',
+                    'devolvido': 'badge-devolvido',
+                    'atrasado': 'badge-atrasado'
+                };
+                return classes[status] || 'badge-secondary';
+            }
+
+            getStatusLabel(status, estaAtrasado) {
+                if (estaAtrasado) return 'Em Atraso';
+                const labels = {
+                    'ativo': 'Ativo',
+                    'devolvido': 'Devolvido',
+                    'atrasado': 'Em Atraso'
+                };
+                return labels[status] || status;
+            }
+
+            exibirErro(mensagem) {
+                document.getElementById('loading').classList.add('d-none');
+                const errorDiv = document.getElementById('error-message');
+                errorDiv.textContent = mensagem;
+                errorDiv.classList.remove('d-none');
+            }
+        }
+
+        let gestaoEmprestimos;
+
+        // Funções globais
+        function filtrarEmprestimos() {
+            const termo = document.getElementById('buscaInput').value.toLowerCase();
+            const emprestimosFiltrados = gestaoEmprestimos.emprestimos.filter(emp =>
+                emp.usuario_nome.toLowerCase().includes(termo) ||
+                emp.livro_titulo.toLowerCase().includes(termo) ||
+                emp.usuario_matricula.toLowerCase().includes(termo)
+            );
+            gestaoEmprestimos.exibirEmprestimos(emprestimosFiltrados);
+        }
+
+        function filtrarPorStatus(status) {
+            gestaoEmprestimos.filtroStatus = status;
+            
+            // Atualizar botões ativos
+            document.querySelectorAll('.btn-group .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            let emprestimosFiltrados = gestaoEmprestimos.emprestimos;
+            
+            if (status !== 'todos') {
+                if (status === 'atrasado') {
+                    const hoje = new Date();
+                    emprestimosFiltrados = gestaoEmprestimos.emprestimos.filter(emp => {
+                        const dataPrevista = new Date(emp.data_devolucao_prevista);
+                        return emp.status === 'ativo' && hoje > dataPrevista;
+                    });
+                } else {
+                    emprestimosFiltrados = gestaoEmprestimos.emprestimos.filter(emp => emp.status === status);
+                }
+            }
+            
+            gestaoEmprestimos.exibirEmprestimos(emprestimosFiltrados);
+        }
+
+        async function abrirModalNovoEmprestimo() {
+            const modal = new bootstrap.Modal(document.getElementById('modalEmprestimo'));
+            
+            // Popular select de usuários
+            const selectUsuario = document.getElementById('usuario_id');
+            selectUsuario.innerHTML = '<option value="">Selecione um usuário...</option>';
+            gestaoEmprestimos.usuarios.forEach(usuario => {
+                selectUsuario.innerHTML += `<option value="${usuario.id}">${usuario.matricula} - ${usuario.nome}</option>`;
+            });
+
+            // Popular select de livros disponíveis
+            const selectLivro = document.getElementById('livro_id');
+            selectLivro.innerHTML = '<option value="">Selecione um livro...</option>';
+            gestaoEmprestimos.livros.forEach(livro => {
+                selectLivro.innerHTML += `<option value="${livro.id}">${livro.titulo} (${livro.quantidade_disponivel} disp.)</option>`;
+            });
+
+            // Limpar formulário
+            document.getElementById('formEmprestimo').reset();
+            document.getElementById('info-usuario').classList.add('d-none');
+            document.getElementById('info-livro').classList.add('d-none');
+
+            modal.show();
+        }
+
+        async function realizarEmprestimo() {
+            const btn = document.querySelector('#modalEmprestimo .btn-primary');
+            const btnText = document.getElementById('btnEmprestimoText');
+            const btnLoading = document.getElementById('btnEmprestimoLoading');
+
+            const emprestimo = {
+                usuario_id: document.getElementById('usuario_id').value,
+                livro_id: document.getElementById('livro_id').value,
+                data_devolucao_prevista: document.getElementById('data_devolucao_prevista').value
+            };
+
+            if (!emprestimo.usuario_id || !emprestimo.livro_id) {
+                alert('Por favor, selecione usuário e livro.');
+                return;
+            }
+
+            try {
+                // Mostrar loading
+                btnText.classList.add('d-none');
+                btnLoading.classList.remove('d-none');
+                btn.disabled = true;
+
+                const response = await fetch(`${gestaoEmprestimos.apiUrl}/emprestimos`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(emprestimo)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Fechar modal e recarregar lista
+                    bootstrap.Modal.getInstance(document.getElementById('modalEmprestimo')).hide();
+                    await gestaoEmprestimos.carregarEmprestimos();
+                    alert('✅ Empréstimo realizado com sucesso!');
+                } else {
+                    alert('❌ Erro: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Erro de conexão: ' + error.message);
+            } finally {
+                // Restaurar botão
+                btnText.classList.remove('d-none');
+                btnLoading.classList.add('d-none');
+                btn.disabled = false;
+            }
+        }
+
+        async function registrarDevolucao(emprestimoId) {
+            if (confirm('Confirmar devolução deste livro?')) {
+                try {
+                    const response = await fetch(`${gestaoEmprestimos.apiUrl}/emprestimos/${emprestimoId}/devolucao`, {
+                        method: 'PUT'
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        await gestaoEmprestimos.carregarEmprestimos();
+                        alert(data.message);
+                    } else {
+                        alert('❌ Erro: ' + data.error);
+                    }
+                } catch (error) {
+                    alert('❌ Erro de conexão: ' + error.message);
+                }
+            }
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            gestaoEmprestimos = new GestaoEmprestimos();
+        });
+    </script>
+</body>
+</html>

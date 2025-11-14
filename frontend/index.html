@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 Sistema Biblioteca Completo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+        }
+        
+        body { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .dashboard-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border: none;
+            overflow: hidden;
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+        
+        .card-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        .module-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar - index.html -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="index.html">
+            <i class="fas fa-book"></i>
+            <strong>Biblioteca Uniasselvi</strong>
+        </a>
+        
+        <div class="navbar-nav ms-auto">
+            <a class="nav-link active" href="index.html">
+                <i class="fas fa-home me-1"></i>Dashboard
+            </a>
+            <a class="nav-link" href="usuarios.html">
+                <i class="fas fa-users me-1"></i>Usuários
+            </a>
+            <a class="nav-link" href="emprestimos.html">
+                <i class="fas fa-hand-holding me-1"></i>Empréstimos
+            </a>
+            <a class="nav-link" href="gestao-acervo.html">
+                <i class="fas fa-book-open me-1"></i>Acervo
+            </a>
+        </div>
+    </div>
+</nav>
+
+    <div class="container py-5">
+        <!-- Header -->
+        <div class="row mb-5">
+            <div class="col-12 text-center text-white">
+                <h1 class="display-4 mb-3">🏛️ Sistema de Biblioteca</h1>
+                <p class="lead">Gestão completa conectada ao banco_biblioteca</p>
+                <p class="text-light">por Emmanuel Fortunato - Uniasselvi</p>
+            </div>
+        </div>
+
+        <!-- Dashboard Stats -->
+        <div class="row mb-5">
+            <div class="col-md-3 mb-4">
+                <div class="dashboard-card text-center p-4">
+                    <div class="card-icon text-primary">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <h3 class="stats-number" id="total-livros">
+                        <span class="loading-spinner"></span>
+                    </h3>
+                    <p class="text-muted">Total de Livros</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="dashboard-card text-center p-4">
+                    <div class="card-icon text-success">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <h3 class="stats-number" id="emprestimos-ativos">
+                        <span class="loading-spinner"></span>
+                    </h3>
+                    <p class="text-muted">Empréstimos Ativos</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="dashboard-card text-center p-4">
+                    <div class="card-icon text-warning">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3 class="stats-number" id="reservas-ativas">
+                        <span class="loading-spinner"></span>
+                    </h3>
+                    <p class="text-muted">Reservas Ativas</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="dashboard-card text-center p-4">
+                    <div class="card-icon text-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3 class="stats-number" id="atrasos">
+                        <span class="loading-spinner"></span>
+                    </h3>
+                    <p class="text-muted">Em Atraso</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Módulos do Sistema -->
+        <div class="module-section">
+            <h3 class="mb-4"><i class="fas fa-th-large me-2"></i>Módulos do Sistema</h3>
+            
+            <div class="row">
+
+<!-- Gestão de Acervo - VERSÃO CORRIGIDA -->
+<div class="col-md-6 col-lg-4 mb-4">
+    <div class="dashboard-card p-4 text-center">
+        <div class="card-icon text-primary">
+            <i class="fas fa-book"></i>
+        </div>
+        <h4>Gestão de Acervo</h4>
+        <p class="text-muted">Gerencie todo o catálogo de livros e controle a disponibilidade</p>
+        <a href="gestao-acervo.html" class="btn btn-primary btn-lg mt-3">
+            <i class="fas fa-external-link-alt me-2"></i>Acessar Módulo
+        </a>
+    </div>
+</div>
+
+<!-- Controle de Empréstimos -->
+<div class="col-md-6 col-lg-4 mb-4">
+    <div class="dashboard-card p-4 text-center">
+        <div class="card-icon text-success">
+            <i class="fas fa-hand-holding"></i>
+        </div>
+        <h4>Empréstimos</h4>
+        <p class="text-muted">Controle de empréstimos e devoluções</p>
+        <a href="emprestimos.html" class="btn btn-success btn-lg mt-3">
+            <i class="fas fa-hand-holding me-2"></i>Acessar Módulo
+        </a>
+    </div>
+</div>
+
+<!-- Sistema de Reservas -->
+<div class="col-md-6 col-lg-4 mb-4">
+    <div class="dashboard-card p-4 text-center">
+        <div class="card-icon text-warning">
+            <i class="fas fa-calendar-check"></i>
+        </div>
+        <h4>Reservas</h4>
+        <p class="text-muted">Reserva de livros</p>
+        <button class="btn btn-warning" onclick="alert('Módulo em desenvolvimento')">
+            <i class="fas fa-external-link-alt me-2"></i>Em Breve
+        </button>
+    </div>
+</div>
+
+                <!-- Gestão de Usuários -->
+<div class="col-md-6 col-lg-4 mb-4">
+    <div class="dashboard-card p-4 text-center">
+        <div class="card-icon text-info">
+            <i class="fas fa-users"></i>
+        </div>
+        <h4>Usuários</h4>
+        <p class="text-muted">Cadastro e gestão de alunos, professores e funcionários</p>
+        <a href="usuarios.html" class="btn btn-info btn-lg mt-3">
+            <i class="fas fa-users me-2"></i>Acessar Módulo
+        </a>
+    </div>
+</div>
+
+
+
+<!-- Relatórios -->
+<div class="col-md-6 col-lg-4 mb-4">
+    <div class="dashboard-card p-4 text-center">
+        <div class="card-icon text-secondary">
+            <i class="fas fa-chart-bar"></i>
+        </div>
+        <h4>Relatórios</h4>
+        <p class="text-muted">Estatísticas e relatórios</p>
+        <button class="btn btn-secondary" onclick="alert('Módulo em desenvolvimento')">
+            <i class="fas fa-external-link-alt me-2"></i>Em Breve
+        </button>
+    </div>
+</div>
+
+<!-- Controle de Multas -->
+<div class="col-md-6 col-lg-4 mb-4">
+    <div class="dashboard-card p-4 text-center">
+        <div class="card-icon text-danger">
+            <i class="fas fa-money-bill-wave"></i>
+        </div>
+        <h4>Multas</h4>
+        <p class="text-muted">Controle de multas por atraso</p>
+        <button class="btn btn-danger" onclick="alert('Módulo em desenvolvimento')">
+            <i class="fas fa-external-link-alt me-2"></i>Em Breve
+        </button>
+    </div>
+</div>
+
+        <!-- Empréstimos Recentes -->
+        <div class="module-section">
+            <h3 class="mb-4"><i class="fas fa-history me-2"></i>Empréstimos Recentes</h3>
+            <div id="emprestimos-recentes" class="table-responsive">
+                <p class="text-center text-muted">
+                    <span class="loading-spinner me-2"></span>
+                    Carregando empréstimos do banco...
+                </p>
+            </div>
+        </div>
+
+        <!-- Status do Sistema -->
+        <div class="module-section">
+            <h3 class="mb-4"><i class="fas fa-server me-2"></i>Status do Sistema</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Backend:</strong> Conectado na porta 3000
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="alert alert-info">
+                        <i class="fas fa-database me-2"></i>
+                        <strong>Banco de Dados:</strong> banco_biblioteca
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SistemaBiblioteca {
+            constructor() {
+                this.apiUrl = 'http://localhost:3000/api';
+                this.init();
+            }
+
+            async init() {
+                await this.carregarEstatisticas();
+                await this.carregarEmprestimosRecentes();
+            }
+
+            async carregarEstatisticas() {
+                try {
+                    const response = await fetch(`${this.apiUrl}/dashboard/estatisticas`);
+                    
+                    if (!response.ok) throw new Error('API não respondeu');
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        document.getElementById('total-livros').textContent = data.data.total_livros;
+                        document.getElementById('emprestimos-ativos').textContent = data.data.emprestimos_ativos;
+                        document.getElementById('reservas-ativas').textContent = data.data.reservas_ativas;
+                        document.getElementById('atrasos').textContent = data.data.emprestimos_atraso;
+                    } else {
+                        this.exibirErro('Erro ao carregar estatísticas: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar estatísticas:', error);
+                    this.exibirErro('Não foi possível conectar com o servidor. Verifique se o backend está rodando.');
+                    
+                    // Mostrar zeros em caso de erro
+                    document.getElementById('total-livros').textContent = '0';
+                    document.getElementById('emprestimos-ativos').textContent = '0';
+                    document.getElementById('reservas-ativas').textContent = '0';
+                    document.getElementById('atrasos').textContent = '0';
+                }
+            }
+
+            async carregarEmprestimosRecentes() {
+                try {
+                    const response = await fetch(`${this.apiUrl}/dashboard/emprestimos-recentes`);
+                    
+                    if (!response.ok) throw new Error('API não respondeu');
+                    
+                    const data = await response.json();
+                    const container = document.getElementById('emprestimos-recentes');
+                    
+                    if (data.success && data.data.length > 0) {
+                        const html = `
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Usuário</th>
+                                        <th>Livro</th>
+                                        <th>Data Empréstimo</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${data.data.map(emp => `
+                                        <tr>
+                                            <td>${emp.usuario}</td>
+                                            <td>${emp.livro}</td>
+                                            <td>${new Date(emp.data_emprestimo).toLocaleDateString('pt-BR')}</td>
+                                            <td>
+                                                <span class="badge ${emp.status === 'ativo' ? 'bg-success' : emp.status === 'atrasado' ? 'bg-danger' : 'bg-secondary'}">
+                                                    ${emp.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = `
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Nenhum empréstimo encontrado no banco de dados.
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar empréstimos:', error);
+                    document.getElementById('emprestimos-recentes').innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Não foi possível carregar os empréstimos recentes.
+                        </div>
+                    `;
+                }
+            }
+
+            exibirErro(mensagem) {
+                // Podemos adicionar um sistema de notificação aqui
+                console.error('Erro do sistema:', mensagem);
+            }
+        }
+
+        function abrirModulo(modulo) {
+            const modulos = {
+                'acervo': 'Gestão de Acervo de Livros',
+                'emprestimos': 'Controle de Empréstimos',
+                'reservas': 'Sistema de Reservas', 
+                'usuarios': 'Cadastro de Usuários',
+                'relatorios': 'Relatórios e Estatísticas',
+                'multas': 'Controle de Multas'
+            };
+            
+            alert(`🚀 ${modulos[modulo]}\n\nMódulo em desenvolvimento - será implementado em breve!`);
+        }
+
+        // Inicializar o sistema
+        document.addEventListener('DOMContentLoaded', () => {
+            new SistemaBiblioteca();
+        });
+    </script>
+</body>
+</html>

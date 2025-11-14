@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>📚 Biblioteca - Versão Web</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .livro { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .disponivel { background: #e8f5e8; }
+        .indisponivel { background: #f5e8e8; }
+    </style>
+</head>
+<body>
+    <h1>🏫 Biblioteca Universitária</h1>
+    <h2>por Emmanuel Fortunato</h2>
+    
+    <div id="livros">
+        <div class="livro disponivel">
+            <h3>Introdução à Programação</h3>
+            <p><strong>Autor:</strong> João Silva</p>
+            <p><strong>Status:</strong> Disponível ✅</p>
+        </div>
+        <div class="livro disponivel">
+            <h3>Banco de Dados para Iniciantes</h3>
+            <p><strong>Autor:</strong> Maria Santos</p>
+            <p><strong>Status:</strong> Disponível ✅</p>
+        </div>
+    </div>
+
+    <h3>Adicionar Novo Livro:</h3>
+    <input type="text" id="titulo" placeholder="Título do livro">
+    <input type="text" id="autor" placeholder="Autor">
+    <button onclick="adicionarLivro()">Adicionar Livro</button>
+
+    <script>
+        function adicionarLivro() {
+            const titulo = document.getElementById('titulo').value;
+            const autor = document.getElementById('autor').value;
+            
+            if(titulo && autor) {
+                const livrosDiv = document.getElementById('livros');
+                const novoLivro = document.createElement('div');
+                novoLivro.className = 'livro disponivel';
+                novoLivro.innerHTML = `
+                    <h3>${titulo}</h3>
+                    <p><strong>Autor:</strong> ${autor}</p>
+                    <p><strong>Status:</strong> Disponível ✅</p>
+                `;
+                livrosDiv.appendChild(novoLivro);
+                
+                // Limpar campos
+                document.getElementById('titulo').value = '';
+                document.getElementById('autor').value = '';
+            }
+        }
+    </script>
+</body>
+</html>

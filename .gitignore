@@ -1,0 +1,38 @@
+# Dependências
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Angular
+dist/
+aot/
+*.ngfactory.ts
+*.ngsummary.json
+*.ngstyle.ts
+
+# TypeScript
+*.tsbuildinfo
+
+# Ambiente
+.env
+.env.local
+.env.production
+
+# Logs
+logs
+*.log
+
+# Database (não versionar dados)
+*.db
+*.sqlite
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
