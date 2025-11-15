@@ -48,25 +48,23 @@
             margin: 0;
         }
 
-        /* CONTAINER DOS GRÁFICOS CORRIGIDO */
-/* CONTAINER DOS GRÁFICOS CORRIGIDO */
-.chart-container {
-    background: white;
-    border-radius: 15px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    height: 400px; /* Altura do container */
-    position: relative;
-}
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            height: 400px;
+            position: relative;
+        }
 
-.chart-container canvas {
-    background: white;
-    border-radius: 10px;
-    height: 300px !important; /* Força a altura do canvas */
-    width: 100% !important;
-    max-height: 300px !important;
-}
+        .chart-container canvas {
+            background: white;
+            border-radius: 10px;
+            height: 300px !important;
+            width: 100% !important;
+            max-height: 300px !important;
+        }
 
         .loading-spinner {
             display: inline-block;
@@ -91,7 +89,6 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
 
-        /* ABAS CORRIGIDAS */
         .nav-tabs {
             border-bottom: 2px solid rgba(255,255,255,0.2);
             margin-bottom: 2rem;
@@ -119,7 +116,6 @@
             font-weight: 600;
         }
 
-        /* CONTEÚDO DAS ABAS */
         .tab-content {
             background: transparent;
         }
@@ -137,7 +133,6 @@
             border-left: 4px solid #dc3545;
         }
 
-        /* RESPONSIVIDADE */
         @media (max-width: 768px) {
             .chart-container {
                 height: 300px;
@@ -197,7 +192,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link " href="multas.html">
+                        <a class="nav-link" href="multas.html">
                             <i class="fas fa-money-bill-wave me-1"></i>Multas
                         </a>
                     </li>
@@ -287,7 +282,7 @@
             </div>
         </div>
 
-        <!-- Abas de Gráficos CORRIGIDAS -->
+        <!-- Abas de Gráficos -->
         <ul class="nav nav-tabs mb-4" id="estatisticasTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="emprestimos-tab" data-bs-toggle="tab" data-bs-target="#emprestimos" type="button" role="tab">
@@ -309,10 +304,15 @@
                     <i class="fas fa-users me-2"></i>Empréstimos por Tipo
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="multas-tab" data-bs-toggle="tab" data-bs-target="#multas" type="button" role="tab">
+                    <i class="fas fa-money-bill-wave me-2"></i>Estatísticas de Multas
+                </button>
+            </li>
         </ul>
 
         <div class="tab-content" id="estatisticasTabsContent">
-            <!-- Gráfico de Empréstimos Diários - PRIMEIRA ABA -->
+            <!-- Gráfico de Empréstimos Diários -->
             <div class="tab-pane fade show active" id="emprestimos" role="tabpanel">
                 <div class="chart-container">
                     <h4 class="mb-4">📈 Empréstimos e Devoluções por Dia</h4>
@@ -347,6 +347,94 @@
                     <canvas id="usuariosChart"></canvas>
                 </div>
             </div>
+
+            <!-- Nova Aba de Estatísticas de Multas -->
+            <div class="tab-pane fade" id="multas" role="tabpanel">
+                <div class="row">
+                    <!-- Cards de Estatísticas de Multas -->
+                    <div class="col-md-4 mb-4">
+                        <div class="stats-card text-center p-4">
+                            <div class="card-icon text-danger">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <h3 class="stats-number" id="multas-pendentes-total">
+                                <span class="loading-spinner"></span>
+                            </h3>
+                            <p class="text-muted">Multas Pendentes</p>
+                            <small class="text-muted" id="multas-pendentes-valor"></small>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="stats-card text-center p-4">
+                            <div class="card-icon text-success">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <h3 class="stats-number" id="multas-pagas-total">
+                                <span class="loading-spinner"></span>
+                            </h3>
+                            <p class="text-muted">Multas Pagas</p>
+                            <small class="text-muted" id="multas-pagas-valor"></small>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="stats-card text-center p-4">
+                            <div class="card-icon text-info">
+                                <i class="fas fa-gift"></i>
+                            </div>
+                            <h3 class="stats-number" id="multas-isentas-total">
+                                <span class="loading-spinner"></span>
+                            </h3>
+                            <p class="text-muted">Multas Isentas</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Gráfico de Evolução Mensal -->
+                    <div class="col-md-6 mb-4">
+                        <div class="chart-container">
+                            <h4 class="mb-4">📈 Evolução Mensal de Multas</h4>
+                            <div id="evolucao-multas-error" class="error-message d-none"></div>
+                            <canvas id="evolucaoMultasChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico de Distribuição por Valor -->
+                    <div class="col-md-6 mb-4">
+                        <div class="chart-container">
+                            <h4 class="mb-4">💰 Distribuição por Faixa de Valor</h4>
+                            <div id="distribuicao-multas-error" class="error-message d-none"></div>
+                            <canvas id="distribuicaoMultasChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabela de Top Usuários com Multas -->
+                <div class="chart-container">
+                    <h4 class="mb-4">👥 Top Usuários com Mais Multas</h4>
+                    <div id="top-usuarios-multas-error" class="error-message d-none"></div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Usuário</th>
+                                    <th>Matrícula</th>
+                                    <th>Total de Multas</th>
+                                    <th>Valor Total (R$)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="top-usuarios-multas-body">
+                                <tr>
+                                    <td colspan="4" class="text-center">
+                                        <span class="loading-spinner me-2"></span>
+                                        Carregando dados...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Tabela de Relatório Diário -->
@@ -376,44 +464,6 @@
                 </table>
             </div>
         </div>
-
-        <!-- Estatísticas de Atraso -->
-        <div class="row mt-4">
-            <div class="col-md-4">
-                <div class="stats-card text-center p-4">
-                    <div class="card-icon text-danger">
-                        <i class="fas fa-exclamation-circle"></i>
-                    </div>
-                    <h3 class="stats-number" id="total-atraso">
-                        <span class="loading-spinner"></span>
-                    </h3>
-                    <p class="text-muted">Empréstimos em Atraso</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stats-card text-center p-4">
-                    <div class="card-icon text-warning">
-                        <i class="fas fa-money-bill-wave"></i>
-                    </div>
-                    <h3 class="stats-number" id="multa-pendente">
-                        <span class="loading-spinner"></span>
-                    </h3>
-                    <p class="text-muted">Multa Pendente (R$)</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stats-card text-center p-4">
-                    <div class="card-icon text-info">
-                        <i class="fas fa-calendar-day"></i>
-                    </div>
-                    <h3 class="stats-number" id="dias-atraso-medio">
-                        <span class="loading-spinner"></span>
-                    </h3>
-                    <p class="text-muted">Dias de Atraso Médio</p>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -457,6 +507,9 @@
                     case '#usuarios':
                         await this.carregarEmprestimosUsuarioTipo();
                         break;
+                    case '#multas':
+                        await this.carregarEstatisticasMultas();
+                        break;
                 }
             }
 
@@ -469,7 +522,8 @@
                         this.carregarTopLivros(),
                         this.carregarEmprestimosUsuarioTipo(),
                         this.carregarRelatorioDiario(),
-                        this.carregarEmprestimosAtraso()
+                        this.carregarEmprestimosAtraso(),
+                        this.carregarEstatisticasMultas()
                     ]);
                 } catch (error) {
                     console.error('Erro ao carregar dados:', error);
@@ -672,6 +726,233 @@
                     console.error('Erro ao carregar empréstimos em atraso:', error);
                     this.mostrarErroNoCard('Erro ao carregar dados de atraso: ' + error.message);
                 }
+            }
+
+            // NOVOS MÉTODOS PARA ESTATÍSTICAS DE MULTAS
+// NO estatisticas.html - Método corrigido SEM dados simulados
+async carregarEstatisticasMultas() {
+    try {
+        const dataInicial = document.getElementById('dataInicial').value;
+        const dataFinal = document.getElementById('dataFinal').value;
+        
+        console.log('📊 Carregando estatísticas de multas...');
+        
+        const response = await fetch(
+            `${this.apiUrl}/estatisticas/multas?data_inicial=${dataInicial}&data_final=${dataFinal}`
+        );
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log('✅ Dados de multas carregados:', data.data);
+            this.atualizarCardsMultas(data.data);
+            this.criarGraficoEvolucaoMultas(data.data.evolucao_mensal);
+            this.atualizarTopUsuariosMultas(data.data.top_usuarios);
+            await this.carregarDistribuicaoMultas();
+            this.esconderErro('multas');
+        } else {
+            throw new Error(data.error || 'Erro na API');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao carregar estatísticas de multas:', error);
+        this.mostrarErroNoGrafico('multas', 'Erro ao carregar dados de multas: ' + error.message);
+        // Limpar os dados em caso de erro
+        this.limparDadosMultas();
+    }
+}
+
+// Adicionar método para limpar dados em caso de erro
+limparDadosMultas() {
+    document.getElementById('multas-pendentes-total').textContent = '0';
+    document.getElementById('multas-pendentes-valor').textContent = 'R$ 0,00';
+    document.getElementById('multas-pagas-total').textContent = '0';
+    document.getElementById('multas-pagas-valor').textContent = 'R$ 0,00';
+    document.getElementById('multas-isentas-total').textContent = '0';
+    
+    // Limpar tabela
+    const tbody = document.getElementById('top-usuarios-multas-body');
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="4" class="text-center text-muted">
+                Nenhum dado disponível
+            </td>
+        </tr>
+    `;
+    
+    // Criar gráficos vazios
+    this.criarGraficoVazio('evolucaoMultasChart', 'Evolução Mensal de Multas');
+    this.criarGraficoVazio('distribuicaoMultasChart', 'Distribuição por Faixa de Valor');
+}
+
+// Método carregarDistribuicaoMultas SEM dados simulados
+async carregarDistribuicaoMultas() {
+    try {
+        const dataInicial = document.getElementById('dataInicial').value;
+        const dataFinal = document.getElementById('dataFinal').value;
+        
+        const response = await fetch(
+            `${this.apiUrl}/estatisticas/multas-distribuicao?data_inicial=${dataInicial}&data_final=${dataFinal}`
+        );
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            this.criarGraficoDistribuicaoMultas(data.data);
+            this.esconderErro('distribuicao-multas');
+        } else {
+            throw new Error(data.error || 'Erro na API');
+        }
+    } catch (error) {
+        console.error('Erro ao carregar distribuição de multas:', error);
+        this.mostrarErroNoGrafico('distribuicao-multas', 'Erro ao carregar distribuição: ' + error.message);
+        this.criarGraficoVazio('distribuicaoMultasChart', 'Distribuição por Faixa de Valor');
+    }
+}
+
+
+            atualizarCardsMultas(dados) {
+                document.getElementById('multas-pendentes-total').textContent = dados.pendentes.total || 0;
+                document.getElementById('multas-pendentes-valor').textContent = `R$ ${(dados.pendentes.valor_total || 0).toFixed(2)}`;
+                
+                document.getElementById('multas-pagas-total').textContent = dados.pagas.total || 0;
+                document.getElementById('multas-pagas-valor').textContent = `R$ ${(dados.pagas.valor_total || 0).toFixed(2)}`;
+                
+                document.getElementById('multas-isentas-total').textContent = dados.isentas.total || 0;
+            }
+
+            criarGraficoEvolucaoMultas(dados) {
+                this.destruirGrafico('evolucaoMultasChart');
+                
+                if (!dados || dados.length === 0) {
+                    this.criarGraficoVazio('evolucaoMultasChart', 'Evolução Mensal de Multas');
+                    return;
+                }
+                
+                const ctx = document.getElementById('evolucaoMultasChart').getContext('2d');
+                
+                this.charts.evolucaoMultasChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dados.map(item => {
+                            const [ano, mes] = item.mes.split('-');
+                            return `${mes}/${ano}`;
+                        }),
+                        datasets: [
+                            {
+                                label: 'Quantidade de Multas',
+                                data: dados.map(item => item.quantidade),
+                                borderColor: '#e74c3c',
+                                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Valor Total (R$)',
+                                data: dados.map(item => item.valor_total),
+                                borderColor: '#f39c12',
+                                backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Quantidade'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Valor (R$)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            criarGraficoDistribuicaoMultas(dados) {
+                this.destruirGrafico('distribuicaoMultasChart');
+                
+                if (!dados || !dados.faixas || dados.faixas.length === 0) {
+                    this.criarGraficoVazio('distribuicaoMultasChart', 'Distribuição por Faixa de Valor');
+                    return;
+                }
+                
+                const ctx = document.getElementById('distribuicaoMultasChart').getContext('2d');
+                
+                this.charts.distribuicaoMultasChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: dados.faixas.map(faixa => `R$ ${faixa}`),
+                        datasets: [{
+                            label: 'Quantidade de Multas',
+                            data: dados.quantidades,
+                            backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                            borderColor: '#3498db',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Distribuição por Faixa de Valor'
+                            }
+                        }
+                    }
+                });
+            }
+
+            atualizarTopUsuariosMultas(usuarios) {
+                const tbody = document.getElementById('top-usuarios-multas-body');
+                
+                if (!usuarios || usuarios.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">
+                                Nenhum usuário com multas no período
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = usuarios.map(usuario => `
+                    <tr>
+                        <td>${usuario.nome}</td>
+                        <td>${usuario.matricula}</td>
+                        <td>${usuario.total_multas}</td>
+                        <td>R$ ${(usuario.valor_total || 0).toFixed(2)}</td>
+                    </tr>
+                `).join('');
             }
 
             // Métodos para criar gráficos

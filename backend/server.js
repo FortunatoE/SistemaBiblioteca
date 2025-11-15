@@ -63,6 +63,364 @@ app.get('/api/debug/tabelas', async (req, res) => {
   }
 });
 
+// ========== ROTAS DE ESTATÍSTICAS DE MULTAS CORRIGIDAS ==========
+
+// Estatísticas de multas para o dashboard
+// ========== ROTAS DE ESTATÍSTICAS DE MULTAS - VERSÃO 100% REAL ==========
+
+// Estatísticas de multas para o dashboard
+// ========== ROTAS DE ESTATÍSTICAS DE MULTAS - VERSÃO CORRIGIDA ==========
+
+// Estatísticas de multas para o dashboard
+// Estatísticas de multas para o dashboard - SEM OBSERVAÇÕES
+app.get('/api/estatisticas/multas', async (req, res) => {
+  try {
+    const { data_inicial, data_final } = req.query;
+    
+    const dataInicial = data_inicial || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dataFinal = data_final || new Date().toISOString().split('T')[0];
+
+    console.log(`💰 Carregando estatísticas de multas: ${dataInicial} até ${dataFinal}`);
+
+    const connection = await mysqlPool.getConnection();
+    
+    // Multas pendentes (empréstimos ativos em atraso)
+    const [multasPendentes] = await connection.execute(`
+      SELECT 
+        COUNT(*) as total, 
+        COALESCE(SUM(
+          CASE 
+            WHEN status = 'ativo' AND data_devolucao_prevista < CURDATE() THEN 
+              DATEDIFF(CURDATE(), data_devolucao_prevista) * 2.0
+            ELSE COALESCE(multa, 0)
+          END
+        ), 0) as valor_total 
+      FROM emprestimos 
+      WHERE (
+        (status = 'ativo' AND data_devolucao_prevista < CURDATE()) 
+        OR (multa > 0 AND status = 'devolvido')
+      )
+    `);
+    
+    // Multas pagas no período
+    const [multasPagas] = await connection.execute(`
+      SELECT COUNT(*) as total, COALESCE(SUM(multa), 0) as valor_total 
+      FROM emprestimos 
+      WHERE multa > 0 
+      AND status = 'devolvido' 
+      AND data_devolucao_efetiva IS NOT NULL
+      AND data_devolucao_efetiva BETWEEN ? AND ?
+    `, [dataInicial, dataFinal]);
+    
+    // Multas isentas no período (multa = 0 mas com atraso)
+    const [multasIsentas] = await connection.execute(`
+      SELECT COUNT(*) as total
+      FROM emprestimos 
+      WHERE multa = 0 
+      AND status = 'devolvido'
+      AND data_devolucao_efetiva IS NOT NULL
+      AND data_devolucao_efetiva > data_devolucao_prevista
+      AND data_devolucao_efetiva BETWEEN ? AND ?
+    `, [dataInicial, dataFinal]);
+    
+    // Evolução de multas por mês
+    const [evolucaoMensal] = await connection.execute(`
+      SELECT 
+        DATE_FORMAT(data_devolucao_efetiva, '%Y-%m') as mes,
+        COUNT(*) as quantidade,
+        COALESCE(SUM(multa), 0) as valor_total
+      FROM emprestimos 
+      WHERE multa > 0 
+      AND status = 'devolvido'
+      AND data_devolucao_efetiva IS NOT NULL
+      AND data_devolucao_efetiva BETWEEN ? AND ?
+      GROUP BY DATE_FORMAT(data_devolucao_efetiva, '%Y-%m')
+      ORDER BY mes
+    `, [dataInicial, dataFinal]);
+    
+    // Top usuários com mais multas
+    const [topUsuariosMultas] = await connection.execute(`
+      SELECT 
+        u.nome,
+        u.matricula,
+        COUNT(e.id) as total_multas,
+        COALESCE(SUM(e.multa), 0) as valor_total
+      FROM emprestimos e
+      INNER JOIN usuarios u ON e.usuario_id = u.id
+      WHERE e.multa > 0 
+      AND e.status = 'devolvido'
+      AND e.data_devolucao_efetiva IS NOT NULL
+      AND e.data_devolucao_efetiva BETWEEN ? AND ?
+      GROUP BY u.id, u.nome, u.matricula
+      ORDER BY valor_total DESC
+      LIMIT 10
+    `, [dataInicial, dataFinal]);
+
+    connection.release();
+
+    console.log('✅ Estatísticas de multas carregadas com sucesso');
+
+    res.json({
+      success: true,
+      data: {
+        pendentes: {
+          total: multasPendentes[0].total,
+          valor_total: parseFloat(multasPendentes[0].valor_total)
+        },
+        pagas: {
+          total: multasPagas[0].total,
+          valor_total: parseFloat(multasPagas[0].valor_total)
+        },
+        isentas: {
+          total: multasIsentas[0].total
+        },
+        evolucao_mensal: evolucaoMensal.map(item => ({
+          mes: item.mes,
+          quantidade: item.quantidade,
+          valor_total: parseFloat(item.valor_total)
+        })),
+        top_usuarios: topUsuariosMultas.map(item => ({
+          nome: item.nome,
+          matricula: item.matricula,
+          total_multas: item.total_multas,
+          valor_total: parseFloat(item.valor_total)
+        }))
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro em /api/estatisticas/multas:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao carregar estatísticas de multas',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+});
+
+// Distribuição de multas por valor - VERSÃO CORRIGIDA
+// Distribuição de multas por valor - VERSÃO SUPER SIMPLES
+app.get('/api/estatisticas/multas-distribuicao', async (req, res) => {
+  try {
+    const { data_inicial, data_final } = req.query;
+    
+    const dataInicial = data_inicial || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dataFinal = data_final || new Date().toISOString().split('T')[0];
+
+    console.log(`📊 Carregando distribuição de multas: ${dataInicial} até ${dataFinal}`);
+
+    const connection = await mysqlPool.getConnection();
+    
+    // Primeiro, vamos pegar todas as multas no período
+    const [multas] = await connection.execute(`
+      SELECT multa
+      FROM emprestimos 
+      WHERE multa > 0 
+      AND status = 'devolvido'
+      AND data_devolucao_efetiva IS NOT NULL
+      AND data_devolucao_efetiva BETWEEN ? AND ?
+    `, [dataInicial, dataFinal]);
+    
+    connection.release();
+
+    console.log(`✅ Encontradas ${multas.length} multas no período`);
+
+    // Se não houver multas, retornar arrays vazios
+    if (multas.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          faixas: ['0-5', '6-10', '11-20', '21-50', '50+'],
+          quantidades: [0, 0, 0, 0, 0],
+          valores: [0, 0, 0, 0, 0]
+        }
+      });
+    }
+
+    // Calcular distribuição manualmente no JavaScript
+    const distribuicao = {
+      '0-5': { quantidade: 0, valor: 0 },
+      '6-10': { quantidade: 0, valor: 0 },
+      '11-20': { quantidade: 0, valor: 0 },
+      '21-50': { quantidade: 0, valor: 0 },
+      '50+': { quantidade: 0, valor: 0 }
+    };
+
+    multas.forEach(item => {
+      const multa = parseFloat(item.multa);
+      
+      if (multa <= 5) {
+        distribuicao['0-5'].quantidade++;
+        distribuicao['0-5'].valor += multa;
+      } else if (multa <= 10) {
+        distribuicao['6-10'].quantidade++;
+        distribuicao['6-10'].valor += multa;
+      } else if (multa <= 20) {
+        distribuicao['11-20'].quantidade++;
+        distribuicao['11-20'].valor += multa;
+      } else if (multa <= 50) {
+        distribuicao['21-50'].quantidade++;
+        distribuicao['21-50'].valor += multa;
+      } else {
+        distribuicao['50+'].quantidade++;
+        distribuicao['50+'].valor += multa;
+      }
+    });
+
+    const faixas = ['0-5', '6-10', '11-20', '21-50', '50+'];
+    const quantidades = faixas.map(faixa => distribuicao[faixa].quantidade);
+    const valores = faixas.map(faixa => distribuicao[faixa].valor);
+
+    console.log('✅ Distribuição calculada:', { faixas, quantidades, valores });
+
+    res.json({
+      success: true,
+      data: {
+        faixas: faixas,
+        quantidades: quantidades,
+        valores: valores
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro em /api/estatisticas/multas-distribuicao:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao carregar distribuição de multas',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+}); 
+
+// Distribuição de multas por valor - VERSÃO CORRIGIDA
+app.get('/api/estatisticas/multas-distribuicao', async (req, res) => {
+  try {
+    const { data_inicial, data_final } = req.query;
+    
+    const dataInicial = data_inicial || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dataFinal = data_final || new Date().toISOString().split('T')[0];
+
+    const connection = await mysqlPool.getConnection();
+    
+    // Consulta corrigida
+    const [distribuicao] = await connection.execute(`
+      SELECT 
+        CASE 
+          WHEN multa <= 5 THEN '0-5'
+          WHEN multa <= 10 THEN '6-10' 
+          WHEN multa <= 20 THEN '11-20'
+          WHEN multa <= 50 THEN '21-50'
+          ELSE '50+'
+        END as faixa_valor,
+        COUNT(*) as quantidade,
+        COALESCE(SUM(multa), 0) as valor_total
+      FROM emprestimos 
+      WHERE multa > 0 
+      AND status = 'devolvido'
+      AND data_devolucao_efetiva IS NOT NULL
+      AND data_devolucao_efetiva BETWEEN ? AND ?
+      GROUP BY 
+        CASE 
+          WHEN multa <= 5 THEN '0-5'
+          WHEN multa <= 10 THEN '6-10' 
+          WHEN multa <= 20 THEN '11-20'
+          WHEN multa <= 50 THEN '21-50'
+          ELSE '50+'
+        END
+      ORDER BY 
+        CASE 
+          WHEN multa <= 5 THEN 1
+          WHEN multa <= 10 THEN 2
+          WHEN multa <= 20 THEN 3
+          WHEN multa <= 50 THEN 4
+          ELSE 5
+        END
+    `, [dataInicial, dataFinal]);
+    
+    connection.release();
+
+    res.json({
+      success: true,
+      data: {
+        faixas: distribuicao.map(item => item.faixa_valor),
+        quantidades: distribuicao.map(item => item.quantidade),
+        valores: distribuicao.map(item => parseFloat(item.valor_total))
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro em /api/estatisticas/multas-distribuicao:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao carregar distribuição de multas',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+});
+
+// Distribuição de multas por valor - VERSÃO CORRIGIDA
+app.get('/api/estatisticas/multas-distribuicao', async (req, res) => {
+  try {
+    const { data_inicial, data_final } = req.query;
+    
+    const dataInicial = data_inicial || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dataFinal = data_final || new Date().toISOString().split('T')[0];
+
+    const connection = await mysqlPool.getConnection();
+    
+    // Consulta corrigida para evitar erro de sintaxe
+    const [distribuicao] = await connection.execute(`
+      SELECT 
+        CASE 
+          WHEN multa <= 5 THEN '0-5'
+          WHEN multa <= 10 THEN '6-10' 
+          WHEN multa <= 20 THEN '11-20'
+          WHEN multa <= 50 THEN '21-50'
+          ELSE '50+'
+        END as faixa_valor,
+        COUNT(*) as quantidade,
+        COALESCE(SUM(multa), 0) as valor_total
+      FROM emprestimos 
+      WHERE multa > 0 
+      AND data_devolucao_efetiva IS NOT NULL
+      AND data_devolucao_efetiva BETWEEN ? AND ?
+      GROUP BY 
+        CASE 
+          WHEN multa <= 5 THEN '0-5'
+          WHEN multa <= 10 THEN '6-10' 
+          WHEN multa <= 20 THEN '11-20'
+          WHEN multa <= 50 THEN '21-50'
+          ELSE '50+'
+        END
+      ORDER BY MIN(multa)
+    `, [dataInicial, dataFinal]);
+    
+    connection.release();
+
+    // Garantir que sempre retorne arrays mesmo vazios
+    res.json({
+      success: true,
+      data: {
+        faixas: distribuicao.map(item => item.faixa_valor) || [],
+        quantidades: distribuicao.map(item => item.quantidade) || [],
+        valores: distribuicao.map(item => parseFloat(item.valor_total)) || []
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro em /api/estatisticas/multas-distribuicao:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao carregar distribuição de multas',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // ========== ROTAS DE ESTATÍSTICAS E RELATÓRIOS ==========
 
 // Estatísticas gerais do sistema
@@ -2074,6 +2432,46 @@ app.get('/api/usuarios/tipo/:tipo', async (req, res) => {
       success: false,
       error: 'Erro ao buscar usuários',
       message: error.message
+    });
+  }
+});
+
+//Rota debug - Verificar multas
+// Rota de debug para verificar dados de multas
+app.get('/api/debug/multas-dados', async (req, res) => {
+  try {
+    const { data_inicial, data_final } = req.query;
+    
+    const dataInicial = data_inicial || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dataFinal = data_final || new Date().toISOString().split('T')[0];
+
+    const connection = await mysqlPool.getConnection();
+    
+    // Ver dados brutos de multas
+    const [multasBrutas] = await connection.execute(`
+      SELECT id, multa, status, data_devolucao_efetiva, data_devolucao_prevista
+      FROM emprestimos 
+      WHERE multa > 0 
+      AND status = 'devolvido'
+      AND data_devolucao_efetiva IS NOT NULL
+      AND data_devolucao_efetiva BETWEEN ? AND ?
+      LIMIT 10
+    `, [dataInicial, dataFinal]);
+    
+    connection.release();
+
+    res.json({
+      success: true,
+      dados: multasBrutas,
+      total: multasBrutas.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro no debug:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
     });
   }
 });
