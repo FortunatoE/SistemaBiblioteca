@@ -437,9 +437,155 @@ app.get('/api/estatisticas/emprestimos-atraso', async (req, res) => {
   }
 });
 
+// ========== ROTAS DE MULTAS ==========
+
+// Listar multas
+app.get('/api/multas', async (req, res) => {
+    try {
+        const connection = await mysqlPool.getConnection();
+        
+        const [multas] = await connection.execute(`
+            SELECT 
+                e.*,
+                u.nome as usuario_nome,
+                u.matricula as usuario_matricula,
+                l.titulo as livro_titulo,
+                l.autor as livro_autor,
+                CASE 
+                    WHEN e.status = 'ativo' AND e.data_devolucao_prevista < CURDATE() THEN 
+                        DATEDIFF(CURDATE(), e.data_devolucao_prevista) * 2.0
+                    WHEN e.multa > 0 THEN e.multa
+                    ELSE 0
+                END as valor_multa_calculado,
+                CASE 
+                    WHEN e.multa > 0 AND e.status = 'devolvido' THEN 'pago'
+                    WHEN e.multa > 0 THEN 'pendente'
+                    WHEN e.status = 'ativo' AND e.data_devolucao_prevista < CURDATE() THEN 'pendente'
+                    ELSE 'sem_multa'
+                END as status_multa
+            FROM emprestimos e
+            INNER JOIN usuarios u ON e.usuario_id = u.id
+            INNER JOIN livros l ON e.livro_id = l.id
+            WHERE e.multa > 0 OR (e.status = 'ativo' AND e.data_devolucao_prevista < CURDATE())
+            ORDER BY e.data_devolucao_prevista ASC
+        `);
+        
+        connection.release();
+
+        res.json({
+            success: true,
+            data: multas.filter(m => m.status_multa !== 'sem_multa'),
+            total: multas.filter(m => m.status_multa !== 'sem_multa').length
+        });
+    } catch (error) {
+        console.error('❌ Erro em /api/multas:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erro ao carregar multas',
+            message: error.message
+        });
+    }
+});
+
+// Registrar pagamento de multa
+app.put('/api/multas/:id/pagar', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { metodo_pagamento, comprovante } = req.body;
+
+        const connection = await mysqlPool.getConnection();
+        
+        // Verificar se empréstimo existe e tem multa
+        const [emprestimo] = await connection.execute(
+            'SELECT * FROM emprestimos WHERE id = ? AND multa > 0',
+            [id]
+        );
+        
+        if (emprestimo.length === 0) {
+            connection.release();
+            return res.status(404).json({
+                success: false,
+                error: 'Empréstimo não encontrado ou sem multa'
+            });
+        }
+
+        // Atualizar informações de pagamento (poderia adicionar colunas específicas para multas)
+        await connection.execute(
+            `UPDATE emprestimos 
+             SET observacoes = CONCAT(COALESCE(observacoes, ''), ' | Multa paga via: ${metodo_pagamento} - ${comprovante || 'Sem comprovante'}')
+             WHERE id = ?`,
+            [id]
+        );
+        
+        connection.release();
+
+        res.json({
+            success: true,
+            message: 'Pagamento de multa registrado com sucesso!'
+        });
+
+    } catch (error) {
+        console.error('❌ Erro em /api/multas/:id/pagar:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erro ao registrar pagamento',
+            message: error.message
+        });
+    }
+});
+
+// Isentar multa
+app.put('/api/multas/:id/isentar', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { motivo } = req.body;
+
+        const connection = await mysqlPool.getConnection();
+        
+        // Verificar se empréstimo existe
+        const [emprestimo] = await connection.execute(
+            'SELECT * FROM emprestimos WHERE id = ?',
+            [id]
+        );
+        
+        if (emprestimo.length === 0) {
+            connection.release();
+            return res.status(404).json({
+                success: false,
+                error: 'Empréstimo não encontrado'
+            });
+        }
+
+        // Remover multa (isentar)
+        await connection.execute(
+            `UPDATE emprestimos 
+             SET multa = 0,
+                 observacoes = CONCAT(COALESCE(observacoes, ''), ' | Multa isenta: ${motivo}')
+             WHERE id = ?`,
+            [id]
+        );
+        
+        connection.release();
+
+        res.json({
+            success: true,
+            message: 'Multa isenta com sucesso!'
+        });
+
+    } catch (error) {
+        console.error('❌ Erro em /api/multas/:id/isentar:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erro ao isentar multa',
+            message: error.message
+        });
+    }
+});
+
 // ========== ROTAS DE EMPRÉSTIMOS ==========
 
 // Listar todos os empréstimos
+// Listar todos os empréstimos - VERSÃO CORRIGIDA COM CÁLCULO DE MULTAS
 app.get('/api/emprestimos', async (req, res) => {
   try {
     const connection = await mysqlPool.getConnection();
@@ -450,7 +596,19 @@ app.get('/api/emprestimos', async (req, res) => {
         u.nome as usuario_nome,
         u.matricula as usuario_matricula,
         l.titulo as livro_titulo,
-        l.autor as livro_autor
+        l.autor as livro_autor,
+        -- CALCULAR MULTAS PARA EMPRÉSTIMOS EM ATRASO
+        CASE 
+          WHEN e.status = 'ativo' AND e.data_devolucao_prevista < CURDATE() THEN 
+            DATEDIFF(CURDATE(), e.data_devolucao_prevista) * 2.0
+          ELSE COALESCE(e.multa, 0)
+        END as multa_calculada,
+        -- IDENTIFICAR SE TEM MULTA PENDENTE
+        CASE 
+          WHEN e.status = 'ativo' AND e.data_devolucao_prevista < CURDATE() THEN 'pendente'
+          WHEN e.multa > 0 THEN 'paga'
+          ELSE 'sem_multa'
+        END as status_multa
       FROM emprestimos e
       INNER JOIN usuarios u ON e.usuario_id = u.id
       INNER JOIN livros l ON e.livro_id = l.id
@@ -459,9 +617,15 @@ app.get('/api/emprestimos', async (req, res) => {
     
     connection.release();
 
+    // Atualizar o campo multa com o valor calculado para exibição
+    const emprestimosComMultas = emprestimos.map(emp => ({
+      ...emp,
+      multa: parseFloat(emp.multa_calculada) // Usar o valor calculado
+    }));
+
     res.json({
       success: true,
-      data: emprestimos,
+      data: emprestimosComMultas,
       total: emprestimos.length
     });
   } catch (error) {

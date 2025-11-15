@@ -57,7 +57,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link  active" href="emprestimos.html">
+                        <a class="nav-link active" href="emprestimos.html">
                             <i class="fas fa-exchange-alt me-1"></i>Empréstimos
                         </a>
                     </li>
@@ -76,11 +76,15 @@
                             <i class="fas fa-chart-bar me-1"></i>Estatísticas
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="multas.html">
+                            <i class="fas fa-money-bill-wave me-1"></i>Multas
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>
     </nav>
-
     <div class="container py-4">
         <!-- Header -->
         <div class="row mb-4">
@@ -237,6 +241,7 @@
                 this.usuarios = [];
                 this.livros = [];
                 this.filtroStatus = 'todos';
+                this.emprestimosFiltrados = [];
                 this.init();
             }
 
@@ -256,8 +261,7 @@
                     
                     if (data.success) {
                         this.emprestimos = data.data;
-                        this.exibirEmprestimos();
-                        this.exibirEstatisticas();
+                        this.aplicarFiltroAtual();
                     } else {
                         this.exibirErro('Erro: ' + data.error);
                     }
@@ -292,15 +296,59 @@
                 }
             }
 
-            exibirEmprestimos(emprestimosFiltrados = null) {
-                const emprestimos = emprestimosFiltrados || this.emprestimos;
+            // FUNÇÃO PARA CALCULAR MULTA PENDENTE
+            calcularMultaPendente(emprestimo) {
+                if (emprestimo.status === 'ativo') {
+                    const hoje = new Date();
+                    const dataPrevista = new Date(emprestimo.data_devolucao_prevista);
+                    
+                    if (hoje > dataPrevista) {
+                        const diasAtraso = Math.ceil((hoje - dataPrevista) / (1000 * 60 * 60 * 24));
+                        return diasAtraso * 2.0; // R$ 2,00 por dia
+                    }
+                }
+                return parseFloat(emprestimo.multa) || 0;
+            }
+
+            aplicarFiltroAtual() {
+                let emprestimosFiltrados = [...this.emprestimos];
+
+                // Aplicar filtro de busca se houver termo
+                const termo = document.getElementById('buscaInput').value.toLowerCase();
+                if (termo) {
+                    emprestimosFiltrados = emprestimosFiltrados.filter(emp =>
+                        emp.usuario_nome.toLowerCase().includes(termo) ||
+                        emp.livro_titulo.toLowerCase().includes(termo) ||
+                        emp.usuario_matricula.toLowerCase().includes(termo)
+                    );
+                }
+
+                // Aplicar filtro de status
+                if (this.filtroStatus !== 'todos') {
+                    if (this.filtroStatus === 'atrasado') {
+                        const hoje = new Date();
+                        emprestimosFiltrados = emprestimosFiltrados.filter(emp => {
+                            const dataPrevista = new Date(emp.data_devolucao_prevista);
+                            return emp.status === 'ativo' && hoje > dataPrevista;
+                        });
+                    } else {
+                        emprestimosFiltrados = emprestimosFiltrados.filter(emp => emp.status === this.filtroStatus);
+                    }
+                }
+
+                this.emprestimosFiltrados = emprestimosFiltrados;
+                this.exibirEmprestimos();
+                this.exibirEstatisticas();
+            }
+
+            exibirEmprestimos() {
                 const container = document.getElementById('emprestimos-container');
                 const loading = document.getElementById('loading');
                 
                 loading.classList.add('d-none');
                 document.getElementById('estatisticas').classList.remove('d-none');
 
-                if (emprestimos.length === 0) {
+                if (this.emprestimosFiltrados.length === 0) {
                     container.innerHTML = `
                         <div class="col-12">
                             <div class="alert alert-info text-center">
@@ -312,11 +360,12 @@
                     return;
                 }
 
-                const html = emprestimos.map(emp => {
+                const html = this.emprestimosFiltrados.map(emp => {
                     const hoje = new Date();
                     const dataPrevista = new Date(emp.data_devolucao_prevista);
                     const estaAtrasado = emp.status === 'ativo' && hoje > dataPrevista;
-                    const temMulta = emp.multa > 0;
+                    const multaCalculada = this.calcularMultaPendente(emp);
+                    const temMulta = multaCalculada > 0;
 
                     return `
                         <div class="col-md-6 col-lg-4 mb-4">
@@ -340,7 +389,7 @@
                                         <p><strong>✅ Devolvido em:</strong> ${new Date(emp.data_devolucao_efetiva).toLocaleDateString('pt-BR')}</p>
                                     ` : ''}
                                     ${temMulta ? `
-                                        <p class="text-danger"><strong>💵 Multa:</strong> R$ ${parseFloat(emp.multa).toFixed(2)}</p>
+                                        <p class="text-danger"><strong>💵 Multa:</strong> R$ ${multaCalculada.toFixed(2)}</p>
                                     ` : ''}
                                 </div>
                                 <div class="card-footer">
@@ -360,14 +409,22 @@
             }
 
             exibirEstatisticas() {
-                const total = this.emprestimos.length;
-                const ativos = this.emprestimos.filter(emp => emp.status === 'ativo').length;
-                const atrasados = this.emprestimos.filter(emp => {
+                // Usar apenas os empréstimos filtrados para as estatísticas
+                const emprestimosParaEstatisticas = this.emprestimosFiltrados;
+                
+                const total = emprestimosParaEstatisticas.length;
+                const ativos = emprestimosParaEstatisticas.filter(emp => emp.status === 'ativo').length;
+                const atrasados = emprestimosParaEstatisticas.filter(emp => {
                     const hoje = new Date();
                     const dataPrevista = new Date(emp.data_devolucao_prevista);
                     return emp.status === 'ativo' && hoje > dataPrevista;
                 }).length;
-                const totalMultas = this.emprestimos.reduce((sum, emp) => sum + parseFloat(emp.multa || 0), 0);
+                
+                // CALCULAR TOTAL DE MULTAS APENAS DOS EMPRÉSTIMOS FILTRADOS
+                const totalMultas = emprestimosParaEstatisticas.reduce((sum, emp) => {
+                    const multa = this.calcularMultaPendente(emp);
+                    return sum + multa;
+                }, 0);
 
                 document.getElementById('total-emprestimos').textContent = total;
                 document.getElementById('emprestimos-ativos').textContent = ativos;
@@ -407,13 +464,7 @@
 
         // Funções globais
         function filtrarEmprestimos() {
-            const termo = document.getElementById('buscaInput').value.toLowerCase();
-            const emprestimosFiltrados = gestaoEmprestimos.emprestimos.filter(emp =>
-                emp.usuario_nome.toLowerCase().includes(termo) ||
-                emp.livro_titulo.toLowerCase().includes(termo) ||
-                emp.usuario_matricula.toLowerCase().includes(termo)
-            );
-            gestaoEmprestimos.exibirEmprestimos(emprestimosFiltrados);
+            gestaoEmprestimos.aplicarFiltroAtual();
         }
 
         function filtrarPorStatus(status) {
@@ -425,21 +476,7 @@
             });
             event.target.classList.add('active');
 
-            let emprestimosFiltrados = gestaoEmprestimos.emprestimos;
-            
-            if (status !== 'todos') {
-                if (status === 'atrasado') {
-                    const hoje = new Date();
-                    emprestimosFiltrados = gestaoEmprestimos.emprestimos.filter(emp => {
-                        const dataPrevista = new Date(emp.data_devolucao_prevista);
-                        return emp.status === 'ativo' && hoje > dataPrevista;
-                    });
-                } else {
-                    emprestimosFiltrados = gestaoEmprestimos.emprestimos.filter(emp => emp.status === status);
-                }
-            }
-            
-            gestaoEmprestimos.exibirEmprestimos(emprestimosFiltrados);
+            gestaoEmprestimos.aplicarFiltroAtual();
         }
 
         async function abrirModalNovoEmprestimo() {

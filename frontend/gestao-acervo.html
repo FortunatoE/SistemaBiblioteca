@@ -55,6 +55,14 @@
         #stats-container {
             display: flex !important;
         }
+
+        /* Toast personalizado */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
     </style>
 </head>
 <body>
@@ -83,7 +91,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link " href="emprestimos.html">
+                        <a class="nav-link" href="emprestimos.html">
                             <i class="fas fa-exchange-alt me-1"></i>Empréstimos
                         </a>
                     </li>
@@ -102,10 +110,27 @@
                             <i class="fas fa-chart-bar me-1"></i>Estatísticas
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="multas.html">
+                            <i class="fas fa-money-bill-wave me-1"></i>Multas
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>
     </nav>
+
+    <!-- Toast Container -->
+    <div class="toast-container">
+        <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong id="toastTitle" class="me-auto"></strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div id="toastMessage" class="toast-body"></div>
+        </div>
+    </div>
+
     <div class="container-fluid py-4">
         <!-- Cabeçalho Padronizado -->
         <div class="row mb-4">
@@ -170,7 +195,6 @@
             </div>
         </div>
 
-        <!-- Resto do código mantido igual -->
         <!-- Filtros e Busca -->
         <div class="row mb-4">
             <div class="col-md-6">
@@ -257,7 +281,7 @@
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label class="form-label">Ano Publicação</label>
-                                    <input type="number" class="form-control" id="ano_publicacao" min="1900" max="2030">
+                                    <input type="number" class="form-control" id="ano_publicacao" min="1500" max="2030">
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -292,12 +316,38 @@
         </div>
     </div>
 
+    <!-- Modal de Confirmação de Exclusão -->
+    <div class="modal fade" id="modalConfirmacaoExclusao" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja excluir o livro <strong id="livroExcluirTitulo"></strong>?</p>
+                    <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmarExclusao()">
+                        <span id="btnExcluirText">Excluir Livro</span>
+                        <span id="btnExcluirLoading" class="d-none">
+                            <span class="loading-spinner"></span> Excluindo...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const API_BASE = 'http://localhost:3000/api';
         let todosLivros = [];
         let filtroAtual = 'todos';
         let termoBusca = '';
+        let livroParaExcluir = null;
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
@@ -477,7 +527,7 @@
                                     <button class="btn btn-sm btn-outline-primary me-1" onclick="editarLivro(${livro.id})">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="excluirLivro(${livro.id})">
+                                    <button class="btn btn-sm btn-outline-danger" onclick="excluirLivro(${livro.id}, '${livro.titulo}')">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -504,7 +554,7 @@
             aplicarFiltros();
         }
 
-        // Restante do código mantido igual...
+        // Funções CRUD completas - CORRIGIDAS
         function abrirModalNovoLivro() {
             document.getElementById('modalLivroTitle').textContent = 'Adicionar Novo Livro';
             document.getElementById('formLivro').reset();
@@ -512,6 +562,82 @@
             
             const modal = new bootstrap.Modal(document.getElementById('modalLivro'));
             modal.show();
+        }
+
+        function editarLivro(id) {
+            try {
+                console.log('📝 Editando livro:', id);
+                
+                // Buscar livro nos dados já carregados (não precisa fazer nova requisição)
+                const livro = todosLivros.find(l => l.id === id);
+                
+                if (!livro) {
+                    throw new Error('Livro não encontrado na lista local');
+                }
+                
+                // Preencher formulário
+                document.getElementById('modalLivroTitle').textContent = 'Editar Livro';
+                document.getElementById('livroId').value = livro.id;
+                document.getElementById('titulo').value = livro.titulo || '';
+                document.getElementById('autor').value = livro.autor || '';
+                document.getElementById('isbn').value = livro.isbn || '';
+                document.getElementById('editora').value = livro.editora || '';
+                document.getElementById('ano_publicacao').value = livro.ano_publicacao || '';
+                document.getElementById('categoria').value = livro.categoria || '';
+                document.getElementById('quantidade_total').value = livro.quantidade_total || 1;
+                document.getElementById('localizacao').value = livro.localizacao || '';
+                
+                const modal = new bootstrap.Modal(document.getElementById('modalLivro'));
+                modal.show();
+                
+            } catch (error) {
+                console.error('❌ Erro ao editar livro:', error);
+                mostrarToast('Erro', `Falha ao carregar dados do livro: ${error.message}`, 'error');
+            }
+        }
+
+        function excluirLivro(id, titulo) {
+            livroParaExcluir = { id, titulo };
+            document.getElementById('livroExcluirTitulo').textContent = titulo;
+            
+            const modal = new bootstrap.Modal(document.getElementById('modalConfirmacaoExclusao'));
+            modal.show();
+        }
+
+        async function confirmarExclusao() {
+            if (!livroParaExcluir) return;
+            
+            try {
+                mostrarBtnExcluirLoading(true);
+                
+                const response = await fetch(`${API_BASE}/livros/${livroParaExcluir.id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Fechar modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('modalConfirmacaoExclusao'));
+                    modal.hide();
+                    
+                    // Recarregar acervo
+                    carregarAcervo();
+                    
+                    // Mostrar mensagem de sucesso
+                    mostrarToast('Sucesso', `Livro "${livroParaExcluir.titulo}" excluído com sucesso!`, 'success');
+                    
+                    livroParaExcluir = null;
+                } else {
+                    throw new Error(data.error || 'Erro ao excluir livro');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro ao excluir livro:', error);
+                mostrarToast('Erro', `Falha ao excluir livro: ${error.message}`, 'error');
+            } finally {
+                mostrarBtnExcluirLoading(false);
+            }
         }
 
         async function salvarLivro() {
@@ -553,24 +679,27 @@
                 if (data.success) {
                     bootstrap.Modal.getInstance(document.getElementById('modalLivro')).hide();
                     carregarAcervo();
-                    mostrarMensagem('Livro salvo com sucesso!', 'success');
+                    
+                    const mensagem = livroId ? 
+                        `Livro "${livroData.titulo}" atualizado com sucesso!` : 
+                        `Livro "${livroData.titulo}" adicionado com sucesso!`;
+                    
+                    mostrarToast('Sucesso', mensagem, 'success');
                 } else {
                     throw new Error(data.error || 'Erro ao salvar livro');
                 }
 
             } catch (error) {
                 console.error('❌ Erro ao salvar livro:', error);
-                mostrarMensagem(`Erro ao salvar livro: ${error.message}`, 'error');
+                mostrarToast('Erro', `Falha ao salvar livro: ${error.message}`, 'error');
             } finally {
                 mostrarBtnLoading(false);
             }
         }
 
-        // Funções auxiliares - CORREÇÃO AQUI
+        // Funções auxiliares
         function mostrarLoading(mostrar) {
             document.getElementById('loading').style.display = mostrar ? 'block' : 'none';
-            // REMOVER A LINHA QUE ESCONDE OS CARDS
-            // document.getElementById('stats-container').style.display = mostrar ? 'none' : 'block';
             document.getElementById('livros-container').style.display = mostrar ? 'none' : 'block';
             document.getElementById('contador-resultados').style.display = mostrar ? 'none' : 'block';
         }
@@ -590,20 +719,30 @@
             document.getElementById('btnSalvarLoading').classList.toggle('d-none', !mostrar);
         }
 
-        function mostrarMensagem(mensagem, tipo) {
-            alert(mensagem);
+        function mostrarBtnExcluirLoading(mostrar) {
+            document.getElementById('btnExcluirText').classList.toggle('d-none', mostrar);
+            document.getElementById('btnExcluirLoading').classList.toggle('d-none', !mostrar);
         }
 
-        function editarLivro(id) {
-            console.log('Editar livro:', id);
-            alert(`Editar livro ${id} - Funcionalidade em desenvolvimento`);
-        }
-
-        function excluirLivro(id) {
-            console.log('Excluir livro:', id);
-            if (confirm('Tem certeza que deseja excluir este livro?')) {
-                alert(`Excluir livro ${id} - Funcionalidade em desenvolvimento`);
-            }
+        function mostrarToast(titulo, mensagem, tipo) {
+            const toast = document.getElementById('liveToast');
+            const toastTitle = document.getElementById('toastTitle');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            // Configurar cores baseadas no tipo
+            const cores = {
+                'success': 'text-bg-success',
+                'error': 'text-bg-danger',
+                'warning': 'text-bg-warning',
+                'info': 'text-bg-info'
+            };
+            
+            toast.className = `toast ${cores[tipo] || 'text-bg-primary'}`;
+            toastTitle.textContent = titulo;
+            toastMessage.textContent = mensagem;
+            
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
         }
     </script>
 </body>
