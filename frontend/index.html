@@ -28,6 +28,7 @@
             transition: all 0.3s ease;
             border: none;
             overflow: hidden;
+            height: 100%;
         }
         
         .dashboard-card:hover {
@@ -36,7 +37,7 @@
         }
         
         .card-icon {
-            font-size: 3rem;
+            font-size: 2.5rem;
             margin-bottom: 1rem;
         }
         
@@ -68,6 +69,41 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Novos estilos para cards de módulos */
+        .module-card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .module-card .card-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .module-card .card-text {
+            flex: 1;
+            margin-bottom: 1.5rem;
+        }
+
+        .module-card .btn {
+            margin-top: auto;
+        }
+
+        .module-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .module-description {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: #6c757d;
+        }
     </style>
 </head>
 <body>
@@ -92,12 +128,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link " href="gestao-acervo.html">
+                        <a class="nav-link" href="gestao-acervo.html">
                             <i class="fas fa-book me-1"></i>Acervo
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link " href="emprestimos.html">
+                        <a class="nav-link" href="emprestimos.html">
                             <i class="fas fa-exchange-alt me-1"></i>Empréstimos
                         </a>
                     </li>
@@ -179,97 +215,114 @@
             </div>
         </div>
 
-        <!-- Módulos do Sistema -->
+        <!-- Módulos do Sistema - VERSÃO ATUALIZADA -->
         <div class="module-section">
             <h3 class="mb-4"><i class="fas fa-th-large me-2"></i>Módulos do Sistema</h3>
             
-            <div class="row">
+            <div class="row g-4">
+                <!-- Gestão de Acervo -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="dashboard-card module-card p-4">
+                        <div class="card-icon text-primary text-center">
+                            <i class="fas fa-book"></i>
+                        </div>
+                        <h4 class="module-title text-center">Gestão de Acervo</h4>
+                        <p class="module-description text-center">
+                            Gerencie todo o catálogo de livros, controle disponibilidade, 
+                            adicione novos livros e mantenha o acervo atualizado.
+                        </p>
+                        <a href="gestao-acervo.html" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-external-link-alt me-2"></i>Acessar Módulo
+                        </a>
+                    </div>
+                </div>
 
-<!-- Gestão de Acervo - VERSÃO CORRIGIDA -->
-<div class="col-md-6 col-lg-4 mb-4">
-    <div class="dashboard-card p-4 text-center">
-        <div class="card-icon text-primary">
-            <i class="fas fa-book"></i>
-        </div>
-        <h4>Gestão de Acervo</h4>
-        <p class="text-muted">Gerencie todo o catálogo de livros e controle a disponibilidade</p>
-        <a href="gestao-acervo.html" class="btn btn-primary btn-lg mt-3">
-            <i class="fas fa-external-link-alt me-2"></i>Acessar Módulo
-        </a>
-    </div>
-</div>
+                <!-- Controle de Empréstimos -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="dashboard-card module-card p-4">
+                        <div class="card-icon text-success text-center">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                        <h4 class="module-title text-center">Empréstimos</h4>
+                        <p class="module-description text-center">
+                            Controle completo de empréstimos, devoluções, renovações 
+                            e cálculo automático de multas por atraso.
+                        </p>
+                        <a href="emprestimos.html" class="btn btn-success btn-lg w-100">
+                            <i class="fas fa-hand-holding me-2"></i>Acessar Módulo
+                        </a>
+                    </div>
+                </div>
 
-<!-- Controle de Empréstimos -->
-<div class="col-md-6 col-lg-4 mb-4">
-    <div class="dashboard-card p-4 text-center">
-        <div class="card-icon text-success">
-            <i class="fas fa-hand-holding"></i>
-        </div>
-        <h4>Empréstimos</h4>
-        <p class="text-muted">Controle de empréstimos e devoluções</p>
-        <a href="emprestimos.html" class="btn btn-success btn-lg mt-3">
-            <i class="fas fa-hand-holding me-2"></i>Acessar Módulo
-        </a>
-    </div>
-</div>
-
-<!-- Sistema de Reservas -->
-<div class="col-md-6 col-lg-4 mb-4">
-    <div class="dashboard-card p-4 text-center">
-        <div class="card-icon text-warning">
-            <i class="fas fa-calendar-check"></i>
-        </div>
-        <h4>Reservas</h4>
-        <p class="text-muted">Reserva de livros</p>
-        <button class="btn btn-warning" onclick="alert('Módulo em desenvolvimento')">
-            <i class="fas fa-external-link-alt me-2"></i>Em Breve
-        </button>
-    </div>
-</div>
+                <!-- Sistema de Reservas -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="dashboard-card module-card p-4">
+                        <div class="card-icon text-warning text-center">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <h4 class="module-title text-center">Reservas</h4>
+                        <p class="module-description text-center">
+                            Sistema completo de reservas de livros com controle de 
+                            validade e notificações de disponibilidade.
+                        </p>
+                        <a href="reserva.html" class="btn btn-warning btn-lg w-100">
+                            <i class="fas fa-calendar-check me-2"></i>Acessar Módulo
+                        </a>
+                    </div>
+                </div>
 
                 <!-- Gestão de Usuários -->
-<div class="col-md-6 col-lg-4 mb-4">
-    <div class="dashboard-card p-4 text-center">
-        <div class="card-icon text-info">
-            <i class="fas fa-users"></i>
+                <div class="col-md-6 col-lg-4">
+                    <div class="dashboard-card module-card p-4">
+                        <div class="card-icon text-info text-center">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h4 class="module-title text-center">Usuários</h4>
+                        <p class="module-description text-center">
+                            Cadastro e gestão de alunos, professores e funcionários. 
+                            Controle de permissões e histórico de empréstimos.
+                        </p>
+                        <a href="usuarios.html" class="btn btn-info btn-lg w-100">
+                            <i class="fas fa-users me-2"></i>Acessar Módulo
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Estatísticas e Relatórios -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="dashboard-card module-card p-4">
+                        <div class="card-icon text-secondary text-center">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <h4 class="module-title text-center">Estatísticas</h4>
+                        <p class="module-description text-center">
+                            Relatórios detalhados, gráficos interativos e métricas 
+                            do sistema em tempo real.
+                        </p>
+                        <a href="estatisticas.html" class="btn btn-secondary btn-lg w-100">
+                            <i class="fas fa-chart-bar me-2"></i>Acessar Módulo
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Controle de Multas -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="dashboard-card module-card p-4">
+                        <div class="card-icon text-danger text-center">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <h4 class="module-title text-center">Controle de Multas</h4>
+                        <p class="module-description text-center">
+                            Gestão de multas por atraso, registro de pagamentos 
+                            e histórico financeiro.
+                        </p>
+                        <button class="btn btn-danger btn-lg w-100" onclick="abrirModulo('multas')">
+                            <i class="fas fa-cog me-2"></i>Em Desenvolvimento
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
-        <h4>Usuários</h4>
-        <p class="text-muted">Cadastro e gestão de alunos, professores e funcionários</p>
-        <a href="usuarios.html" class="btn btn-info btn-lg mt-3">
-            <i class="fas fa-users me-2"></i>Acessar Módulo
-        </a>
-    </div>
-</div>
-
-
-
-<!-- Relatórios -->
-<div class="col-md-6 col-lg-4 mb-4">
-    <div class="dashboard-card p-4 text-center">
-        <div class="card-icon text-secondary">
-            <i class="fas fa-chart-bar"></i>
-        </div>
-        <h4>Relatórios</h4>
-        <p class="text-muted">Estatísticas e relatórios</p>
-        <button class="btn btn-secondary" onclick="alert('Módulo em desenvolvimento')">
-            <i class="fas fa-external-link-alt me-2"></i>Em Breve
-        </button>
-    </div>
-</div>
-
-<!-- Controle de Multas -->
-<div class="col-md-6 col-lg-4 mb-4">
-    <div class="dashboard-card p-4 text-center">
-        <div class="card-icon text-danger">
-            <i class="fas fa-money-bill-wave"></i>
-        </div>
-        <h4>Multas</h4>
-        <p class="text-muted">Controle de multas por atraso</p>
-        <button class="btn btn-danger" onclick="alert('Módulo em desenvolvimento')">
-            <i class="fas fa-external-link-alt me-2"></i>Em Breve
-        </button>
-    </div>
-</div>
 
         <!-- Empréstimos Recentes -->
         <div class="module-section">
@@ -406,11 +459,6 @@
 
         function abrirModulo(modulo) {
             const modulos = {
-                'acervo': 'Gestão de Acervo de Livros',
-                'emprestimos': 'Controle de Empréstimos',
-                'reservas': 'Sistema de Reservas', 
-                'usuarios': 'Cadastro de Usuários',
-                'relatorios': 'Relatórios e Estatísticas',
                 'multas': 'Controle de Multas'
             };
             
