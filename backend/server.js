@@ -29,6 +29,413 @@ const dbConfig = {
 const mysqlPool = mysql.createPool(dbConfig);
 
 
+// Rota para verificar estrutura das tabelas
+app.get('/api/debug/tabelas', async (req, res) => {
+  try {
+    const connection = await mysqlPool.getConnection();
+    
+    const [usuariosColumns] = await connection.execute(`
+      SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE 
+      FROM information_schema.COLUMNS 
+      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'usuarios'
+    `, [process.env.DB_NAME]);
+    
+    const [livrosColumns] = await connection.execute(`
+      SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE 
+      FROM information_schema.COLUMNS 
+      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'livros'
+    `, [process.env.DB_NAME]);
+    
+    connection.release();
+
+    res.json({
+      success: true,
+      usuarios: usuariosColumns,
+      livros: livrosColumns
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao verificar tabelas',
+      message: error.message
+    });
+  }
+});
+
+// ========== ROTAS DE ESTATÍSTICAS E RELATÓRIOS ==========
+
+// Estatísticas gerais do sistema
+app.get('/api/estatisticas/geral', async (req, res) => {
+  try {
+    const { data_inicial, data_final } = req.query;
+    
+    // Valores padrão se não for informado
+    const dataInicial = data_inicial || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dataFinal = data_final || new Date().toISOString().split('T')[0];
+
+    console.log(`📊 Carregando estatísticas gerais: ${dataInicial} até ${dataFinal}`);
+
+    const connection = await mysqlPool.getConnection();
+    
+    // Total de empréstimos no período
+    const [totalEmprestimos] = await connection.execute(
+      `SELECT COUNT(*) as total FROM emprestimos 
+       WHERE data_emprestimo BETWEEN ? AND ?`,
+      [dataInicial, dataFinal]
+    );
+    
+    // Empréstimos ativos
+    const [emprestimosAtivos] = await connection.execute(
+      'SELECT COUNT(*) as total FROM emprestimos WHERE status = "ativo"'
+    );
+    
+    // Devoluções no período
+    const [devolucoes] = await connection.execute(
+      `SELECT COUNT(*) as total FROM emprestimos 
+       WHERE data_devolucao_efetiva BETWEEN ? AND ?`,
+      [dataInicial, dataFinal]
+    );
+    
+    // Reservas ativas
+    const [reservasAtivas] = await connection.execute(
+      'SELECT COUNT(*) as total FROM reservas WHERE status = "ativa"'
+    );
+    
+    // Multas arrecadadas no período
+    const [multas] = await connection.execute(
+      `SELECT COALESCE(SUM(multa), 0) as total FROM emprestimos 
+       WHERE data_devolucao_efetiva BETWEEN ? AND ? AND multa > 0`,
+      [dataInicial, dataFinal]
+    );
+    
+    // Novos usuários no período
+// Novos usuários no período
+const [novosUsuarios] = await connection.execute(
+  `SELECT COUNT(*) as total FROM usuarios 
+   WHERE data_cadastro BETWEEN ? AND ?`,
+  [dataInicial, dataFinal]
+);
+    // Total de usuários ativos
+const [totalUsuarios] = await connection.execute(
+  'SELECT COUNT(*) as total FROM usuarios WHERE ativo = true'
+);
+
+    // Total de livros no acervo
+    const [totalLivros] = await connection.execute(
+      'SELECT COUNT(*) as total FROM livros'
+    );
+    
+    // Livros disponíveis
+    const [livrosDisponiveis] = await connection.execute(
+      'SELECT SUM(quantidade_disponivel) as total FROM livros'
+    );
+    
+    // Taxa de devolução (empréstimos devolvidos / total de empréstimos que deveriam ser devolvidos)
+    const [taxaDevolucao] = await connection.execute(`
+      SELECT 
+        COUNT(CASE WHEN data_devolucao_efetiva IS NOT NULL AND data_devolucao_efetiva <= data_devolucao_prevista THEN 1 END) as devolvidos_prazo,
+        COUNT(CASE WHEN data_devolucao_efetiva IS NOT NULL THEN 1 END) as total_devolvidos,
+        COUNT(*) as total_emprestimos
+      FROM emprestimos 
+      WHERE data_emprestimo BETWEEN ? AND ?
+    `, [dataInicial, dataFinal]);
+    
+    // Livro mais emprestado
+    const [livroMaisEmprestado] = await connection.execute(`
+      SELECT l.titulo, COUNT(e.id) as total_emprestimos
+      FROM emprestimos e
+      INNER JOIN livros l ON e.livro_id = l.id
+      WHERE e.data_emprestimo BETWEEN ? AND ?
+      GROUP BY l.id, l.titulo
+      ORDER BY total_emprestimos DESC
+      LIMIT 1
+    `, [dataInicial, dataFinal]);
+    
+    connection.release();
+
+    const taxaDevolucaoPercent = taxaDevolucao[0].total_devolvidos > 0 
+      ? ((taxaDevolucao[0].devolvidos_prazo / taxaDevolucao[0].total_devolvidos) * 100).toFixed(1)
+      : 0;
+
+    res.json({
+      success: true,
+      data: {
+        total_emprestimos: totalEmprestimos[0].total,
+        emprestimos_ativos: emprestimosAtivos[0].total,
+        devolucoes_periodo: devolucoes[0].total,
+        reservas_ativas: reservasAtivas[0].total,
+        multas_arrecadadas: parseFloat(multas[0].total) || 0,
+        novos_usuarios: novosUsuarios[0].total,
+        total_usuarios: totalUsuarios[0].total,
+        total_livros: totalLivros[0].total,
+        livros_disponiveis: livrosDisponiveis[0].total || 0,
+        taxa_devolucao: parseFloat(taxaDevolucaoPercent),
+        livros_mais_emprestados: livroMaisEmprestado[0]?.titulo || 'Nenhum'
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro em /api/estatisticas/geral:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao carregar estatísticas gerais',
+      message: error.message
+    });
+  }
+});
+
+// Empréstimos por dia para gráfico de linha
+app.get('/api/estatisticas/emprestimos-diarios', async (req, res) => {
+  try {
+    const { data_inicial, data_final } = req.query;
+    
+    const dataInicial = data_inicial || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dataFinal = data_final || new Date().toISOString().split('T')[0];
+
+    console.log(`📈 Carregando empréstimos diários: ${dataInicial} até ${dataFinal}`);
+
+    const connection = await mysqlPool.getConnection();
+    
+    const [dados] = await connection.execute(`
+      SELECT 
+        DATE(data_emprestimo) as data,
+        COUNT(*) as total_emprestimos,
+        COUNT(CASE WHEN data_devolucao_efetiva IS NOT NULL THEN 1 END) as total_devolucoes
+      FROM emprestimos 
+      WHERE data_emprestimo BETWEEN ? AND ?
+      GROUP BY DATE(data_emprestimo)
+      ORDER BY data
+    `, [dataInicial, dataFinal]);
+    
+    connection.release();
+
+    // Formatar dados para o gráfico
+    const dadosFormatados = {
+      datas: dados.map(item => new Date(item.data).toLocaleDateString('pt-BR')),
+      emprestimos: dados.map(item => item.total_emprestimos),
+      devolucoes: dados.map(item => item.total_devolucoes)
+    };
+
+    res.json({
+      success: true,
+      data: dadosFormatados
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro em /api/estatisticas/emprestimos-diarios:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao carregar empréstimos diários',
+      message: error.message
+    });
+  }
+});
+
+// Livros por categoria para gráfico de pizza
+app.get('/api/estatisticas/livros-categoria', async (req, res) => {
+  try {
+    const connection = await mysqlPool.getConnection();
+    
+    const [dados] = await connection.execute(`
+      SELECT 
+        COALESCE(categoria, 'Sem categoria') as categoria,
+        COUNT(*) as quantidade
+      FROM livros 
+      GROUP BY categoria
+      ORDER BY quantidade DESC
+    `);
+    
+    connection.release();
+
+    res.json({
+      success: true,
+      data: {
+        categorias: dados.map(item => item.categoria),
+        quantidades: dados.map(item => item.quantidade)
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro em /api/estatisticas/livros-categoria:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao carregar livros por categoria',
+      message: error.message
+    });
+  }
+});
+
+// Top 10 livros mais emprestados para gráfico de barras
+app.get('/api/estatisticas/top-livros', async (req, res) => {
+  try {
+    const { data_inicial, data_final } = req.query;
+    
+    const dataInicial = data_inicial || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dataFinal = data_final || new Date().toISOString().split('T')[0];
+
+    const connection = await mysqlPool.getConnection();
+    
+    const [dados] = await connection.execute(`
+      SELECT 
+        l.titulo,
+        COUNT(e.id) as total_emprestimos
+      FROM emprestimos e
+      INNER JOIN livros l ON e.livro_id = l.id
+      WHERE e.data_emprestimo BETWEEN ? AND ?
+      GROUP BY l.id, l.titulo
+      ORDER BY total_emprestimos DESC
+      LIMIT 10
+    `, [dataInicial, dataFinal]);
+    
+    connection.release();
+
+    res.json({
+      success: true,
+      data: {
+        livros: dados.map(item => item.titulo),
+        emprestimos: dados.map(item => item.total_emprestimos)
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro em /api/estatisticas/top-livros:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao carregar top livros',
+      message: error.message
+    });
+  }
+});
+
+// Empréstimos por tipo de usuário
+app.get('/api/estatisticas/emprestimos-usuario-tipo', async (req, res) => {
+  try {
+    const { data_inicial, data_final } = req.query;
+    
+    const dataInicial = data_inicial || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dataFinal = data_final || new Date().toISOString().split('T')[0];
+
+    const connection = await mysqlPool.getConnection();
+    
+    const [dados] = await connection.execute(`
+      SELECT 
+        u.tipo,
+        COUNT(e.id) as total_emprestimos
+      FROM emprestimos e
+      INNER JOIN usuarios u ON e.usuario_id = u.id
+      WHERE e.data_emprestimo BETWEEN ? AND ?
+      GROUP BY u.tipo
+      ORDER BY total_emprestimos DESC
+    `, [dataInicial, dataFinal]);
+    
+    connection.release();
+
+    res.json({
+      success: true,
+      data: {
+        tipos: dados.map(item => item.tipo),
+        quantidades: dados.map(item => item.total_emprestimos)
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro em /api/estatisticas/emprestimos-usuario-tipo:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao carregar empréstimos por tipo de usuário',
+      message: error.message
+    });
+  }
+});
+
+// Relatório detalhado diário
+// RELATÓRIO DIÁRIO - VERSÃO CORRIGIDA
+app.get('/api/estatisticas/relatorio-diario', async (req, res) => {
+  try {
+    const { data_inicial, data_final } = req.query;
+    
+    const dataInicial = data_inicial || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const dataFinal = data_final || new Date().toISOString().split('T')[0];
+
+    console.log(`📋 Carregando relatório diário: ${dataInicial} até ${dataFinal}`);
+
+    const connection = await mysqlPool.getConnection();
+    
+    // CONSULTA SIMPLIFICADA E CORRIGIDA
+    const [dados] = await connection.execute(`
+      SELECT 
+        DATE(data_emprestimo) as data,
+        COUNT(*) as emprestimos,
+        COUNT(CASE WHEN data_devolucao_efetiva IS NOT NULL THEN 1 END) as devolucoes,
+        COALESCE(SUM(CASE WHEN data_devolucao_efetiva IS NOT NULL THEN multa ELSE 0 END), 0) as multas,
+        COUNT(DISTINCT usuario_id) as usuarios_ativos
+      FROM emprestimos 
+      WHERE data_emprestimo BETWEEN ? AND ?
+      GROUP BY DATE(data_emprestimo)
+      ORDER BY data DESC
+      LIMIT 30
+    `, [dataInicial, dataFinal]);
+    
+    connection.release();
+
+    res.json({
+      success: true,
+      data: dados.map(item => ({
+        data: item.data,
+        emprestimos: item.emprestimos,
+        devolucoes: item.devolucoes,
+        reservas: 0, // Valor fixo por enquanto
+        multas: parseFloat(item.multas),
+        usuarios_ativos: item.usuarios_ativos
+      }))
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro em /api/estatisticas/relatorio-diario:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao carregar relatório diário',
+      message: error.message,
+      stack: error.stack // Adiciona stack trace para debug
+    });
+  }
+});
+
+// Estatísticas de empréstimos em atraso
+app.get('/api/estatisticas/emprestimos-atraso', async (req, res) => {
+  try {
+    const connection = await mysqlPool.getConnection();
+    
+    const [dados] = await connection.execute(`
+      SELECT 
+        COUNT(*) as total_atraso,
+        COALESCE(SUM(multa), 0) as multa_pendente,
+        AVG(DATEDIFF(CURDATE(), data_devolucao_prevista)) as dias_atraso_medio
+      FROM emprestimos 
+      WHERE status = 'ativo' AND data_devolucao_prevista < CURDATE()
+    `);
+    
+    connection.release();
+
+    res.json({
+      success: true,
+      data: {
+        total_atraso: dados[0].total_atraso,
+        multa_pendente: parseFloat(dados[0].multa_pendente),
+        dias_atraso_medio: parseFloat(dados[0].dias_atraso_medio) || 0
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro em /api/estatisticas/emprestimos-atraso:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao carregar empréstimos em atraso',
+      message: error.message
+    });
+  }
+});
 
 // ========== ROTAS DE EMPRÉSTIMOS ==========
 
@@ -557,7 +964,7 @@ app.get('/api/reservas/:id', async (req, res) => {
 // Criar nova reserva
 app.post('/api/reservas', async (req, res) => {
   try {
-    const { usuario_id, livro_id, data_validade, observacoes } = req.body;
+    const { usuario_id, livro_id, data_reserva, data_validade, observacoes } = req.body;
     
     // Validações
     if (!usuario_id || !livro_id || !data_validade) {

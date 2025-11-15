@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Estatísticas - Biblioteca Uniasselvi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-bottom: 2rem;
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border: none;
+            overflow: hidden;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        /* CONTAINER DOS GRÁFICOS CORRIGIDO */
+/* CONTAINER DOS GRÁFICOS CORRIGIDO */
+.chart-container {
+    background: white;
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    height: 400px; /* Altura do container */
+    position: relative;
+}
+
+.chart-container canvas {
+    background: white;
+    border-radius: 10px;
+    height: 300px !important; /* Força a altura do canvas */
+    width: 100% !important;
+    max-height: 300px !important;
+}
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .filter-section {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        /* ABAS CORRIGIDAS */
+        .nav-tabs {
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+            margin-bottom: 2rem;
+        }
+
+        .nav-tabs .nav-link {
+            color: rgba(255, 255, 255, 0.8) !important;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 10px 10px 0 0;
+            margin-right: 5px;
+            padding: 12px 20px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-tabs .nav-link:hover {
+            color: white !important;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-tabs .nav-link.active {
+            background: white !important;
+            color: var(--primary) !important;
+            border: none;
+            font-weight: 600;
+        }
+
+        /* CONTEÚDO DAS ABAS */
+        .tab-content {
+            background: transparent;
+        }
+
+        .tab-pane {
+            background: transparent;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #dc3545;
+        }
+
+        /* RESPONSIVIDADE */
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+                padding: 1rem;
+            }
+            
+            .nav-tabs .nav-link {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <i class="fas fa-book-open me-2"></i>
+                Biblioteca Uniasselvi
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="gestao-acervo.html">
+                            <i class="fas fa-book me-1"></i>Acervo
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="emprestimos.html">
+                            <i class="fas fa-exchange-alt me-1"></i>Empréstimos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="reserva.html">
+                            <i class="fas fa-calendar-check me-1"></i>Reservas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="usuarios.html">
+                            <i class="fas fa-users me-1"></i>Usuários
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="estatisticas.html">
+                            <i class="fas fa-chart-bar me-1"></i>Estatísticas
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <!-- Header -->
+        <div class="row mb-5">
+            <div class="col-12 text-center text-white">
+                <h1 class="display-4 mb-3">📊 Estatísticas Detalhadas</h1>
+                <p class="lead">Dados em tempo real do sistema da biblioteca</p>
+            </div>
+        </div>
+
+        <!-- Filtros de Período -->
+        <div class="filter-section">
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">Data Inicial</label>
+                    <input type="date" id="dataInicial" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Data Final</label>
+                    <input type="date" id="dataFinal" class="form-control">
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <button class="btn btn-primary me-2" onclick="aplicarFiltros()">
+                        <i class="fas fa-filter me-2"></i>Aplicar Filtros
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="limparFiltros()">
+                        <i class="fas fa-times me-2"></i>Limpar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cards de Estatísticas Gerais -->
+        <div class="row mb-5">
+            <div class="col-md-3 mb-4">
+                <div class="stats-card text-center p-4">
+                    <div class="card-icon text-primary">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <h3 class="stats-number" id="total-emprestimos">
+                        <span class="loading-spinner"></span>
+                    </h3>
+                    <p class="text-muted">Total de Empréstimos</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="stats-card text-center p-4">
+                    <div class="card-icon text-success">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <h3 class="stats-number" id="emprestimos-ativos">
+                        <span class="loading-spinner"></span>
+                    </h3>
+                    <p class="text-muted">Empréstimos Ativos</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="stats-card text-center p-4">
+                    <div class="card-icon text-warning">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3 class="stats-number" id="reservas-ativas">
+                        <span class="loading-spinner"></span>
+                    </h3>
+                    <p class="text-muted">Reservas Ativas</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="stats-card text-center p-4">
+                    <div class="card-icon text-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3 class="stats-number" id="multas-arrecadadas">
+                        <span class="loading-spinner"></span>
+                    </h3>
+                    <p class="text-muted">Multas Arrecadadas</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Abas de Gráficos CORRIGIDAS -->
+        <ul class="nav nav-tabs mb-4" id="estatisticasTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="emprestimos-tab" data-bs-toggle="tab" data-bs-target="#emprestimos" type="button" role="tab">
+                    <i class="fas fa-chart-line me-2"></i>Empréstimos Diários
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="categorias-tab" data-bs-toggle="tab" data-bs-target="#categorias" type="button" role="tab">
+                    <i class="fas fa-chart-pie me-2"></i>Livros por Categoria
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="top-livros-tab" data-bs-toggle="tab" data-bs-target="#top-livros" type="button" role="tab">
+                    <i class="fas fa-chart-bar me-2"></i>Top Livros
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="usuarios-tab" data-bs-toggle="tab" data-bs-target="#usuarios" type="button" role="tab">
+                    <i class="fas fa-users me-2"></i>Empréstimos por Tipo
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="estatisticasTabsContent">
+            <!-- Gráfico de Empréstimos Diários - PRIMEIRA ABA -->
+            <div class="tab-pane fade show active" id="emprestimos" role="tabpanel">
+                <div class="chart-container">
+                    <h4 class="mb-4">📈 Empréstimos e Devoluções por Dia</h4>
+                    <div id="emprestimos-diarios-error" class="error-message d-none"></div>
+                    <canvas id="emprestimosDiariosChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico de Categorias -->
+            <div class="tab-pane fade" id="categorias" role="tabpanel">
+                <div class="chart-container">
+                    <h4 class="mb-4">📊 Distribuição por Categoria</h4>
+                    <div id="categorias-error" class="error-message d-none"></div>
+                    <canvas id="categoriasChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico de Top Livros -->
+            <div class="tab-pane fade" id="top-livros" role="tabpanel">
+                <div class="chart-container">
+                    <h4 class="mb-4">🏆 Top 10 Livros Mais Emprestados</h4>
+                    <div id="top-livros-error" class="error-message d-none"></div>
+                    <canvas id="topLivrosChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico de Usuários -->
+            <div class="tab-pane fade" id="usuarios" role="tabpanel">
+                <div class="chart-container">
+                    <h4 class="mb-4">👥 Empréstimos por Tipo de Usuário</h4>
+                    <div id="usuarios-error" class="error-message d-none"></div>
+                    <canvas id="usuariosChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Relatório Diário -->
+        <div class="chart-container mt-4">
+            <h4 class="mb-4">📋 Relatório Diário Detalhado</h4>
+            <div id="relatorio-diario-error" class="error-message d-none"></div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Data</th>
+                            <th>Empréstimos</th>
+                            <th>Devoluções</th>
+                            <th>Reservas</th>
+                            <th>Multas (R$)</th>
+                            <th>Usuários Ativos</th>
+                        </tr>
+                    </thead>
+                    <tbody id="relatorio-diario-body">
+                        <tr>
+                            <td colspan="6" class="text-center">
+                                <span class="loading-spinner me-2"></span>
+                                Carregando dados...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Estatísticas de Atraso -->
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="stats-card text-center p-4">
+                    <div class="card-icon text-danger">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <h3 class="stats-number" id="total-atraso">
+                        <span class="loading-spinner"></span>
+                    </h3>
+                    <p class="text-muted">Empréstimos em Atraso</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stats-card text-center p-4">
+                    <div class="card-icon text-warning">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    <h3 class="stats-number" id="multa-pendente">
+                        <span class="loading-spinner"></span>
+                    </h3>
+                    <p class="text-muted">Multa Pendente (R$)</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stats-card text-center p-4">
+                    <div class="card-icon text-info">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
+                    <h3 class="stats-number" id="dias-atraso-medio">
+                        <span class="loading-spinner"></span>
+                    </h3>
+                    <p class="text-muted">Dias de Atraso Médio</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        class EstatisticasBiblioteca {
+            constructor() {
+                this.apiUrl = 'http://localhost:3000/api';
+                this.charts = {};
+                this.init();
+            }
+
+            async init() {
+                this.configurarDatasPadrao();
+                await this.carregarTodosOsDados();
+                this.configurarEventos();
+            }
+
+            configurarDatasPadrao() {
+                const dataFinal = new Date();
+                const dataInicial = new Date();
+                dataInicial.setDate(dataInicial.getDate() - 30);
+
+                document.getElementById('dataFinal').value = dataFinal.toISOString().split('T')[0];
+                document.getElementById('dataInicial').value = dataInicial.toISOString().split('T')[0];
+            }
+
+            configurarEventos() {
+                document.getElementById('estatisticasTabs').addEventListener('shown.bs.tab', (event) => {
+                    const tabId = event.target.getAttribute('data-bs-target');
+                    this.atualizarAbaAtiva(tabId);
+                });
+            }
+
+            async atualizarAbaAtiva(tabId) {
+                switch(tabId) {
+                    case '#categorias':
+                        await this.carregarLivrosCategoria();
+                        break;
+                    case '#top-livros':
+                        await this.carregarTopLivros();
+                        break;
+                    case '#usuarios':
+                        await this.carregarEmprestimosUsuarioTipo();
+                        break;
+                }
+            }
+
+            async carregarTodosOsDados() {
+                try {
+                    await Promise.all([
+                        this.carregarEstatisticasGerais(),
+                        this.carregarEmprestimosDiarios(),
+                        this.carregarLivrosCategoria(),
+                        this.carregarTopLivros(),
+                        this.carregarEmprestimosUsuarioTipo(),
+                        this.carregarRelatorioDiario(),
+                        this.carregarEmprestimosAtraso()
+                    ]);
+                } catch (error) {
+                    console.error('Erro ao carregar dados:', error);
+                    this.mostrarErro('Erro ao carregar dados estatísticos');
+                }
+            }
+
+            async carregarEstatisticasGerais() {
+                try {
+                    const dataInicial = document.getElementById('dataInicial').value;
+                    const dataFinal = document.getElementById('dataFinal').value;
+                    
+                    const response = await fetch(
+                        `${this.apiUrl}/estatisticas/geral?data_inicial=${dataInicial}&data_final=${dataFinal}`
+                    );
+                    
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.atualizarCardsEstatisticas(data.data);
+                    } else {
+                        throw new Error(data.error || 'Erro na API');
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar estatísticas gerais:', error);
+                    this.mostrarErroNoCard('Erro ao carregar estatísticas gerais: ' + error.message);
+                }
+            }
+
+            atualizarCardsEstatisticas(dados) {
+                document.getElementById('total-emprestimos').textContent = dados.total_emprestimos || 0;
+                document.getElementById('emprestimos-ativos').textContent = dados.emprestimos_ativos || 0;
+                document.getElementById('reservas-ativas').textContent = dados.reservas_ativas || 0;
+                document.getElementById('multas-arrecadadas').textContent = `R$ ${(dados.multas_arrecadadas || 0).toFixed(2)}`;
+            }
+
+            async carregarEmprestimosDiarios() {
+                try {
+                    const dataInicial = document.getElementById('dataInicial').value;
+                    const dataFinal = document.getElementById('dataFinal').value;
+                    
+                    const response = await fetch(
+                        `${this.apiUrl}/estatisticas/emprestimos-diarios?data_inicial=${dataInicial}&data_final=${dataFinal}`
+                    );
+                    
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.criarGraficoEmprestimosDiarios(data.data);
+                        this.esconderErro('emprestimos-diarios');
+                    } else {
+                        throw new Error(data.error || 'Erro na API');
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar empréstimos diários:', error);
+                    this.mostrarErroNoGrafico('emprestimos-diarios', 'Erro ao carregar dados de empréstimos diários: ' + error.message);
+                    this.criarGraficoVazio('emprestimosDiariosChart', 'Empréstimos Diários');
+                }
+            }
+
+            async carregarLivrosCategoria() {
+                try {
+                    const response = await fetch(`${this.apiUrl}/estatisticas/livros-categoria`);
+                    
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.criarGraficoCategorias(data.data);
+                        this.esconderErro('categorias');
+                    } else {
+                        throw new Error(data.error || 'Erro na API');
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar livros por categoria:', error);
+                    this.mostrarErroNoGrafico('categorias', 'Erro ao carregar dados por categoria: ' + error.message);
+                    this.criarGraficoVazio('categoriasChart', 'Distribuição por Categoria');
+                }
+            }
+
+            async carregarTopLivros() {
+                try {
+                    const dataInicial = document.getElementById('dataInicial').value;
+                    const dataFinal = document.getElementById('dataFinal').value;
+                    
+                    const response = await fetch(
+                        `${this.apiUrl}/estatisticas/top-livros?data_inicial=${dataInicial}&data_final=${dataFinal}`
+                    );
+                    
+                    if (!response.ok) {
+                        this.usarDadosSimuladosTopLivros();
+                        return;
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.data && data.data.livros && data.data.livros.length > 0) {
+                        this.criarGraficoTopLivros(data.data);
+                        this.esconderErro('top-livros');
+                    } else {
+                        this.usarDadosSimuladosTopLivros();
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar top livros:', error);
+                    this.usarDadosSimuladosTopLivros();
+                }
+            }
+
+            usarDadosSimuladosTopLivros() {
+                const dadosSimulados = {
+                    livros: [
+                        'Dom Casmurro - Machado de Assis',
+                        'O Cortiço - Aluísio Azevedo', 
+                        'Iracema - José de Alencar',
+                        'Memórias Póstumas - Machado de Assis',
+                        'O Alienista - Machado de Assis',
+                        'A Moreninha - Joaquim Manuel de Macedo',
+                        'O Guarani - José de Alencar',
+                        'Senhora - José de Alencar',
+                        'Lucíola - José de Alencar',
+                        'Ubirajara - José de Alencar'
+                    ],
+                    emprestimos: [45, 38, 32, 28, 25, 22, 20, 18, 15, 12]
+                };
+                
+                this.criarGraficoTopLivros(dadosSimulados);
+                this.mostrarErroNoGrafico('top-livros', 'Dados simulados - API indisponível');
+            }
+
+            async carregarEmprestimosUsuarioTipo() {
+                try {
+                    const dataInicial = document.getElementById('dataInicial').value;
+                    const dataFinal = document.getElementById('dataFinal').value;
+                    
+                    const response = await fetch(
+                        `${this.apiUrl}/estatisticas/emprestimos-usuario-tipo?data_inicial=${dataInicial}&data_final=${dataFinal}`
+                    );
+                    
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.criarGraficoUsuarios(data.data);
+                        this.esconderErro('usuarios');
+                    } else {
+                        throw new Error(data.error || 'Erro na API');
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar empréstimos por tipo de usuário:', error);
+                    this.mostrarErroNoGrafico('usuarios', 'Erro ao carregar dados por tipo de usuário: ' + error.message);
+                    this.criarGraficoVazio('usuariosChart', 'Empréstimos por Tipo de Usuário');
+                }
+            }
+
+            async carregarRelatorioDiario() {
+                try {
+                    const dataInicial = document.getElementById('dataInicial').value;
+                    const dataFinal = document.getElementById('dataFinal').value;
+                    
+                    const response = await fetch(
+                        `${this.apiUrl}/estatisticas/relatorio-diario?data_inicial=${dataInicial}&data_final=${dataFinal}`
+                    );
+                    
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.atualizarRelatorioDiario(data.data);
+                        this.esconderErro('relatorio-diario');
+                    } else {
+                        throw new Error(data.error || 'Erro na API');
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar relatório diário:', error);
+                    this.mostrarErroNaTabela('Erro ao carregar relatório diário: ' + error.message);
+                }
+            }
+
+            async carregarEmprestimosAtraso() {
+                try {
+                    const response = await fetch(`${this.apiUrl}/estatisticas/emprestimos-atraso`);
+                    
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.atualizarCardsAtraso(data.data);
+                    } else {
+                        throw new Error(data.error || 'Erro na API');
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar empréstimos em atraso:', error);
+                    this.mostrarErroNoCard('Erro ao carregar dados de atraso: ' + error.message);
+                }
+            }
+
+            // Métodos para criar gráficos
+            criarGraficoEmprestimosDiarios(dados) {
+                this.destruirGrafico('emprestimosDiariosChart');
+                
+                const ctx = document.getElementById('emprestimosDiariosChart').getContext('2d');
+                
+                this.charts.emprestimosDiariosChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dados.datas || [],
+                        datasets: [
+                            {
+                                label: 'Empréstimos',
+                                data: dados.emprestimos || [],
+                                borderColor: '#3498db',
+                                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            },
+                            {
+                                label: 'Devoluções',
+                                data: dados.devolucoes || [],
+                                borderColor: '#27ae60',
+                                backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Movimentação Diária'
+                            }
+                        }
+                    }
+                });
+            }
+
+            criarGraficoCategorias(dados) {
+                this.destruirGrafico('categoriasChart');
+                
+                const ctx = document.getElementById('categoriasChart').getContext('2d');
+
+                const cores = [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                    '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+                ];
+
+                this.charts.categoriasChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: dados.categorias || [],
+                        datasets: [{
+                            data: dados.quantidades || [],
+                            backgroundColor: cores,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                            }
+                        }
+                    }
+                });
+            }
+
+            criarGraficoTopLivros(dados) {
+                this.destruirGrafico('topLivrosChart');
+                
+                const ctx = document.getElementById('topLivrosChart').getContext('2d');
+
+                this.charts.topLivrosChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: dados.livros || [],
+                        datasets: [{
+                            label: 'Empréstimos',
+                            data: dados.emprestimos || [],
+                            backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                            borderColor: '#3498db',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+
+            criarGraficoUsuarios(dados) {
+                this.destruirGrafico('usuariosChart');
+                
+                const ctx = document.getElementById('usuariosChart').getContext('2d');
+
+                this.charts.usuariosChart = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: dados.tipos || [],
+                        datasets: [{
+                            data: dados.quantidades || [],
+                            backgroundColor: [
+                                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                            }
+                        }
+                    }
+                });
+            }
+
+            criarGraficoVazio(canvasId, titulo) {
+                this.destruirGrafico(canvasId);
+                
+                const ctx = document.getElementById(canvasId).getContext('2d');
+
+                this.charts[canvasId] = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Sem dados'],
+                        datasets: [{
+                            label: 'Nenhum dado disponível',
+                            data: [1],
+                            backgroundColor: 'rgba(200, 200, 200, 0.5)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: titulo
+                            }
+                        }
+                    }
+                });
+            }
+
+            destruirGrafico(canvasId) {
+                if (this.charts[canvasId]) {
+                    this.charts[canvasId].destroy();
+                    this.charts[canvasId] = null;
+                }
+            }
+
+            atualizarRelatorioDiario(dados) {
+                const tbody = document.getElementById('relatorio-diario-body');
+                
+                if (!dados || dados.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">
+                                Nenhum dado encontrado para o período selecionado
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = dados.map(item => `
+                    <tr>
+                        <td>${new Date(item.data).toLocaleDateString('pt-BR')}</td>
+                        <td>${item.emprestimos || 0}</td>
+                        <td>${item.devolucoes || 0}</td>
+                        <td>${item.reservas || 0}</td>
+                        <td>R$ ${(item.multas || 0).toFixed(2)}</td>
+                        <td>${item.usuarios_ativos || 0}</td>
+                    </tr>
+                `).join('');
+            }
+
+            atualizarCardsAtraso(dados) {
+                document.getElementById('total-atraso').textContent = dados.total_atraso || 0;
+                document.getElementById('multa-pendente').textContent = `R$ ${(dados.multa_pendente || 0).toFixed(2)}`;
+                document.getElementById('dias-atraso-medio').textContent = (dados.dias_atraso_medio || 0).toFixed(1);
+            }
+
+            // Métodos de tratamento de erro
+            mostrarErroNoGrafico(tipo, mensagem) {
+                const errorElement = document.getElementById(`${tipo}-error`);
+                if (errorElement) {
+                    errorElement.textContent = mensagem;
+                    errorElement.classList.remove('d-none');
+                }
+            }
+
+            esconderErro(tipo) {
+                const errorElement = document.getElementById(`${tipo}-error`);
+                if (errorElement) {
+                    errorElement.classList.add('d-none');
+                }
+            }
+
+            mostrarErroNaTabela(mensagem) {
+                const tbody = document.getElementById('relatorio-diario-body');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            ${mensagem}
+                        </td>
+                    </tr>
+                `;
+            }
+
+            mostrarErroNoCard(mensagem) {
+                console.error('Erro no card:', mensagem);
+            }
+
+            mostrarErro(mensagem) {
+                alert(`❌ ${mensagem}`);
+            }
+
+            limparTodosOsGraficos() {
+                Object.keys(this.charts).forEach(canvasId => {
+                    this.destruirGrafico(canvasId);
+                });
+                this.charts = {};
+            }
+        }
+
+        // Variável global para a instância
+        let estatisticasApp;
+
+        // Funções globais para os botões
+        function aplicarFiltros() {
+            if (estatisticasApp) {
+                estatisticasApp.limparTodosOsGraficos();
+                estatisticasApp.carregarTodosOsDados();
+            }
+        }
+
+        function limparFiltros() {
+            document.getElementById('dataInicial').value = '';
+            document.getElementById('dataFinal').value = '';
+            
+            if (estatisticasApp) {
+                estatisticasApp.configurarDatasPadrao();
+                estatisticasApp.limparTodosOsGraficos();
+                estatisticasApp.carregarTodosOsDados();
+            }
+        }
+
+        // Inicializar o sistema quando a página carregar
+        document.addEventListener('DOMContentLoaded', () => {
+            estatisticasApp = new EstatisticasBiblioteca();
+        });
+    </script>
+</body>
+</html>

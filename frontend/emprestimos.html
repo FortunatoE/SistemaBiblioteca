@@ -32,30 +32,54 @@
     </style>
 </head>
 <body>
-<!-- Navbar - emprestimos.html -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-    <div class="container">
-        <a class="navbar-brand" href="index.html">
-            <i class="fas fa-book"></i>
-            <strong>Biblioteca Uniasselvi</strong>
-        </a>
-        
-        <div class="navbar-nav">
-            <a class="nav-link" href="index.html">
-                <i class="fas fa-home me-1"></i>Dashboard
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <i class="fas fa-book-open me-2"></i>
+                Biblioteca Uniasselvi
             </a>
-            <a class="nav-link" href="usuarios.html">
-                <i class="fas fa-users me-1"></i>Usuários
-            </a>
-            <a class="nav-link active" href="emprestimos.html">
-                <i class="fas fa-hand-holding me-1"></i>Empréstimos
-            </a>
-            <a class="nav-link" href="gestao-acervo.html">
-                <i class="fas fa-book-open me-1"></i>Acervo
-            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="gestao-acervo.html">
+                            <i class="fas fa-book me-1"></i>Acervo
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link  active" href="emprestimos.html">
+                            <i class="fas fa-exchange-alt me-1"></i>Empréstimos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="reserva.html">
+                            <i class="fas fa-calendar-check me-1"></i>Reservas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="usuarios.html">
+                            <i class="fas fa-users me-1"></i>Usuários
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="estatisticas.html">
+                            <i class="fas fa-chart-bar me-1"></i>Estatísticas
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
     <div class="container py-4">
         <!-- Header -->

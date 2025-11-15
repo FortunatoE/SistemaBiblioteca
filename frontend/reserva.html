@@ -52,13 +52,26 @@
             border-left: 4px solid #ffc107;
             background-color: #fff3cd;
         }
+        
+        /* GARANTIR QUE OS CARDS FICAM SEMPRE VISÍVEIS E HORIZONTAIS */
+        #stats-container {
+            display: flex !important;
+            flex-wrap: wrap;
+        }
+        #stats-container .col-xl-3 {
+            display: flex;
+        }
+        .stats-card {
+            flex: 1;
+            min-height: 120px;
+        }
     </style>
 </head>
 <body>
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="dashboard.html">
+            <a class="navbar-brand" href="index.html">
                 <i class="fas fa-book-open me-2"></i>
                 Biblioteca Uniasselvi
             </a>
@@ -70,22 +83,22 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="dashboard.html">
+                        <a class="nav-link" href="index.html">
                             <i class="fas fa-tachometer-alt me-1"></i>Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="acervo.html">
+                        <a class="nav-link " href="gestao-acervo.html">
                             <i class="fas fa-book me-1"></i>Acervo
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="emprestimos.html">
+                        <a class="nav-link " href="emprestimos.html">
                             <i class="fas fa-exchange-alt me-1"></i>Empréstimos
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="reservas.html">
+                        <a class="nav-link  active" href="reserva.html">
                             <i class="fas fa-calendar-check me-1"></i>Reservas
                         </a>
                     </li>
@@ -94,15 +107,12 @@
                             <i class="fas fa-users me-1"></i>Usuários
                         </a>
                     </li>
-                </ul>
-                
-                <div class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <i class="fas fa-user me-1"></i>Admin
+                        <a class="nav-link" href="estatisticas.html">
+                            <i class="fas fa-chart-bar me-1"></i>Estatísticas
                         </a>
                     </li>
-                </div>
+                </ul>
             </div>
         </div>
     </nav>
@@ -123,46 +133,46 @@
             </div>
         </div>
 
-        <!-- Cards de Estatísticas -->
-        <div id="stats-container" class="row mb-4">
-            <div class="col-md-3 mb-3">
-                <div class="stats-card p-3">
-                    <div class="d-flex justify-content-between">
+        <!-- Cards de Estatísticas - HORIZONTAL OTIMIZADO -->
+        <div id="stats-container" class="row g-3 mb-4">
+            <div class="col-xl-3 col-md-6 col-sm-6 col-12">
+                <div class="stats-card p-3 h-100">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 id="total-reservas">0</h4>
+                            <h4 id="total-reservas" class="mb-1">0</h4>
                             <p class="mb-0">Total de Reservas</p>
                         </div>
                         <i class="fas fa-calendar-check fa-2x opacity-50"></i>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3 mb-3">
-                <div class="stats-card p-3" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                    <div class="d-flex justify-content-between">
+            <div class="col-xl-3 col-md-6 col-sm-6 col-12">
+                <div class="stats-card p-3 h-100" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 id="reservas-ativas">0</h4>
+                            <h4 id="reservas-ativas" class="mb-1">0</h4>
                             <p class="mb-0">Ativas</p>
                         </div>
                         <i class="fas fa-clock fa-2x opacity-50"></i>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3 mb-3">
-                <div class="stats-card p-3" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                    <div class="d-flex justify-content-between">
+            <div class="col-xl-3 col-md-6 col-sm-6 col-12">
+                <div class="stats-card p-3 h-100" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 id="reservas-hoje">0</h4>
+                            <h4 id="reservas-hoje" class="mb-1">0</h4>
                             <p class="mb-0">Vencem Hoje</p>
                         </div>
                         <i class="fas fa-exclamation-triangle fa-2x opacity-50"></i>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3 mb-3">
-                <div class="stats-card p-3" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                    <div class="d-flex justify-content-between">
+            <div class="col-xl-3 col-md-6 col-sm-6 col-12">
+                <div class="stats-card p-3 h-100" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 id="livros-reservados">0</h4>
+                            <h4 id="livros-reservados" class="mb-1">0</h4>
                             <p class="mb-0">Livros Reservados</p>
                         </div>
                         <i class="fas fa-book fa-2x opacity-50"></i>
@@ -245,22 +255,22 @@
                                 </div>
                             </div>
                         </div>
-<div class="row">
-    <div class="col-md-6">
-        <div class="mb-3">
-            <label class="form-label">Data da Reserva *</label>
-            <input type="date" class="form-control" id="data_reserva" required>
-            <div class="form-text">Data a partir da qual a reserva é válida</div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="mb-3">
-            <label class="form-label">Validade da Reserva *</label>
-            <input type="date" class="form-control" id="data_validade" required>
-            <div class="form-text">A reserva expira nesta data (máximo 7 dias a partir da data da reserva)</div>
-        </div>
-    </div>
-</div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Data da Reserva *</label>
+                                    <input type="date" class="form-control" id="data_reserva" required>
+                                    <div class="form-text">Data a partir da qual a reserva é válida</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Validade da Reserva *</label>
+                                    <input type="date" class="form-control" id="data_validade" required>
+                                    <div class="form-text">A reserva expira nesta data (máximo 7 dias a partir da data da reserva)</div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">Observações</label>
                             <textarea class="form-control" id="observacoes" rows="3" placeholder="Observações adicionais..."></textarea>
@@ -644,123 +654,124 @@
             
             aplicarFiltros();
         }
-// Modal functions
-async function abrirModalNovaReserva() {
-    const modal = new bootstrap.Modal(document.getElementById('modalReserva'));
-    
-    // Limpar formulário
-    document.getElementById('formReserva').reset();
-    
-    // Configurar data mínima (hoje)
-    const hoje = new Date();
-    const ano = hoje.getFullYear();
-    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-    const dia = String(hoje.getDate()).padStart(2, '0');
-    const hojeFormatado = `${ano}-${mes}-${dia}`;
-    
-    // Configurar data padrão da reserva (hoje)
-    const dataReservaInput = document.getElementById('data_reserva');
-    dataReservaInput.value = hojeFormatado;
-    dataReservaInput.min = hojeFormatado;
-    
-    // Configurar data de validade padrão (3 dias a partir de hoje)
-    const dataValidade = new Date(hoje);
-    dataValidade.setDate(hoje.getDate() + 3);
-    const anoValidade = dataValidade.getFullYear();
-    const mesValidade = String(dataValidade.getMonth() + 1).padStart(2, '0');
-    const diaValidade = String(dataValidade.getDate()).padStart(2, '0');
-    const dataValidadeFormatada = `${anoValidade}-${mesValidade}-${diaValidade}`;
-    
-    const dataValidadeInput = document.getElementById('data_validade');
-    dataValidadeInput.value = dataValidadeFormatada;
-    dataValidadeInput.min = hojeFormatado;
-    
-    // Configurar data máxima (7 dias a partir de hoje)
-    const dataMaxima = new Date(hoje);
-    dataMaxima.setDate(hoje.getDate() + 7);
-    const anoMaximo = dataMaxima.getFullYear();
-    const mesMaximo = String(dataMaxima.getMonth() + 1).padStart(2, '0');
-    const diaMaximo = String(dataMaxima.getDate()).padStart(2, '0');
-    const dataMaximaFormatada = `${anoMaximo}-${mesMaximo}-${diaMaximo}`;
-    
-    dataValidadeInput.max = dataMaximaFormatada;
 
-    // Adicionar evento para quando a data da reserva mudar
-    dataReservaInput.addEventListener('change', function() {
-        atualizarDatasValidade();
-    });
+        // Modal functions
+        async function abrirModalNovaReserva() {
+            const modal = new bootstrap.Modal(document.getElementById('modalReserva'));
+            
+            // Limpar formulário
+            document.getElementById('formReserva').reset();
+            
+            // Configurar data mínima (hoje)
+            const hoje = new Date();
+            const ano = hoje.getFullYear();
+            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+            const dia = String(hoje.getDate()).padStart(2, '0');
+            const hojeFormatado = `${ano}-${mes}-${dia}`;
+            
+            // Configurar data padrão da reserva (hoje)
+            const dataReservaInput = document.getElementById('data_reserva');
+            dataReservaInput.value = hojeFormatado;
+            dataReservaInput.min = hojeFormatado;
+            
+            // Configurar data de validade padrão (3 dias a partir de hoje)
+            const dataValidade = new Date(hoje);
+            dataValidade.setDate(hoje.getDate() + 3);
+            const anoValidade = dataValidade.getFullYear();
+            const mesValidade = String(dataValidade.getMonth() + 1).padStart(2, '0');
+            const diaValidade = String(dataValidade.getDate()).padStart(2, '0');
+            const dataValidadeFormatada = `${anoValidade}-${mesValidade}-${diaValidade}`;
+            
+            const dataValidadeInput = document.getElementById('data_validade');
+            dataValidadeInput.value = dataValidadeFormatada;
+            dataValidadeInput.min = hojeFormatado;
+            
+            // Configurar data máxima (7 dias a partir de hoje)
+            const dataMaxima = new Date(hoje);
+            dataMaxima.setDate(hoje.getDate() + 7);
+            const anoMaximo = dataMaxima.getFullYear();
+            const mesMaximo = String(dataMaxima.getMonth() + 1).padStart(2, '0');
+            const diaMaximo = String(dataMaxima.getDate()).padStart(2, '0');
+            const dataMaximaFormatada = `${anoMaximo}-${mesMaximo}-${diaMaximo}`;
+            
+            dataValidadeInput.max = dataMaximaFormatada;
 
-    // Popular selects
-    const selectUsuario = document.getElementById('usuario_id');
-    selectUsuario.innerHTML = '<option value="">Selecione um usuário...</option>';
-    todosUsuarios.forEach(usuario => {
-        selectUsuario.innerHTML += `<option value="${usuario.id}">${usuario.matricula} - ${usuario.nome}</option>`;
-    });
+            // Adicionar evento para quando a data da reserva mudar
+            dataReservaInput.addEventListener('change', function() {
+                atualizarDatasValidade();
+            });
 
-    const selectLivro = document.getElementById('livro_id');
-    selectLivro.innerHTML = '<option value="">Selecione um livro...</option>';
-    todosLivros.forEach(livro => {
-        if (livro.quantidade_disponivel > 0) {
-            selectLivro.innerHTML += `<option value="${livro.id}">${livro.titulo} - ${livro.autor} (${livro.quantidade_disponivel} disp.)</option>`;
+            // Popular selects
+            const selectUsuario = document.getElementById('usuario_id');
+            selectUsuario.innerHTML = '<option value="">Selecione um usuário...</option>';
+            todosUsuarios.forEach(usuario => {
+                selectUsuario.innerHTML += `<option value="${usuario.id}">${usuario.matricula} - ${usuario.nome}</option>`;
+            });
+
+            const selectLivro = document.getElementById('livro_id');
+            selectLivro.innerHTML = '<option value="">Selecione um livro...</option>';
+            todosLivros.forEach(livro => {
+                if (livro.quantidade_disponivel > 0) {
+                    selectLivro.innerHTML += `<option value="${livro.id}">${livro.titulo} - ${livro.autor} (${livro.quantidade_disponivel} disp.)</option>`;
+                }
+            });
+
+            // Limpar mensagens
+            document.getElementById('info-usuario').classList.add('d-none');
+            document.getElementById('info-livro').classList.add('d-none');
+            document.getElementById('erro-reserva').classList.add('d-none');
+
+            modal.show();
         }
-    });
 
-    // Limpar mensagens
-    document.getElementById('info-usuario').classList.add('d-none');
-    document.getElementById('info-livro').classList.add('d-none');
-    document.getElementById('erro-reserva').classList.add('d-none');
-
-    modal.show();
-}
-
-// Função para atualizar as datas de validade quando a data da reserva mudar
-function atualizarDatasValidade() {
-    const dataReserva = document.getElementById('data_reserva').value;
-    
-    if (!dataReserva) return;
-    
-    const dataReservaObj = new Date(dataReserva);
-    const dataValidadeInput = document.getElementById('data_validade');
-    
-    // Atualizar data mínima da validade (mesmo dia da reserva)
-    dataValidadeInput.min = dataReserva;
-    
-    // Atualizar data máxima da validade (7 dias após a data da reserva) - CÁLCULO CORRIGIDO
-    const dataMaxima = new Date(dataReservaObj);
-    dataMaxima.setDate(dataReservaObj.getDate() + 7);
-    const anoMaximo = dataMaxima.getFullYear();
-    const mesMaximo = String(dataMaxima.getMonth() + 1).padStart(2, '0');
-    const diaMaximo = String(dataMaxima.getDate()).padStart(2, '0');
-    const dataMaximaFormatada = `${anoMaximo}-${mesMaximo}-${diaMaximo}`;
-    
-    dataValidadeInput.max = dataMaximaFormatada;
-    
-    // Se a data de validade atual for anterior à data da reserva ou fora do limite, ajustar
-    const dataValidadeAtual = new Date(dataValidadeInput.value);
-    const dataValidadeAtualMs = dataValidadeAtual.getTime();
-    const dataReservaMs = dataReservaObj.getTime();
-    const dataMaximaMs = dataMaxima.getTime();
-    
-    if (dataValidadeAtualMs < dataReservaMs || dataValidadeAtualMs > dataMaximaMs) {
-        // Definir data de validade padrão (3 dias após a data da reserva)
-        const dataValidadePadrao = new Date(dataReservaObj);
-        dataValidadePadrao.setDate(dataReservaObj.getDate() + 3);
-        const anoPadrao = dataValidadePadrao.getFullYear();
-        const mesPadrao = String(dataValidadePadrao.getMonth() + 1).padStart(2, '0');
-        const diaPadrao = String(dataValidadePadrao.getDate()).padStart(2, '0');
-        const dataValidadePadraoFormatada = `${anoPadrao}-${mesPadrao}-${diaPadrao}`;
-        
-        dataValidadeInput.value = dataValidadePadraoFormatada;
-    }
-    
-    // Atualizar texto de ajuda
-    const ajudaElement = dataValidadeInput.nextElementSibling;
-    if (ajudaElement && ajudaElement.classList.contains('form-text')) {
-        const dataReservaFormatada = new Date(dataReserva).toLocaleDateString('pt-BR');
-        const dataMaximaFormatadaBR = new Date(dataMaximaFormatada).toLocaleDateString('pt-BR');
-        ajudaElement.textContent = `A reserva expira nesta data (período de 1 a 7 dias. Máximo: ${dataMaximaFormatadaBR})`;
-    }
-}
+        // Função para atualizar as datas de validade quando a data da reserva mudar
+        function atualizarDatasValidade() {
+            const dataReserva = document.getElementById('data_reserva').value;
+            
+            if (!dataReserva) return;
+            
+            const dataReservaObj = new Date(dataReserva);
+            const dataValidadeInput = document.getElementById('data_validade');
+            
+            // Atualizar data mínima da validade (mesmo dia da reserva)
+            dataValidadeInput.min = dataReserva;
+            
+            // Atualizar data máxima da validade (7 dias após a data da reserva)
+            const dataMaxima = new Date(dataReservaObj);
+            dataMaxima.setDate(dataReservaObj.getDate() + 7);
+            const anoMaximo = dataMaxima.getFullYear();
+            const mesMaximo = String(dataMaxima.getMonth() + 1).padStart(2, '0');
+            const diaMaximo = String(dataMaxima.getDate()).padStart(2, '0');
+            const dataMaximaFormatada = `${anoMaximo}-${mesMaximo}-${diaMaximo}`;
+            
+            dataValidadeInput.max = dataMaximaFormatada;
+            
+            // Se a data de validade atual for anterior à data da reserva ou fora do limite, ajustar
+            const dataValidadeAtual = new Date(dataValidadeInput.value);
+            const dataValidadeAtualMs = dataValidadeAtual.getTime();
+            const dataReservaMs = dataReservaObj.getTime();
+            const dataMaximaMs = dataMaxima.getTime();
+            
+            if (dataValidadeAtualMs < dataReservaMs || dataValidadeAtualMs > dataMaximaMs) {
+                // Definir data de validade padrão (3 dias após a data da reserva)
+                const dataValidadePadrao = new Date(dataReservaObj);
+                dataValidadePadrao.setDate(dataReservaObj.getDate() + 3);
+                const anoPadrao = dataValidadePadrao.getFullYear();
+                const mesPadrao = String(dataValidadePadrao.getMonth() + 1).padStart(2, '0');
+                const diaPadrao = String(dataValidadePadrao.getDate()).padStart(2, '0');
+                const dataValidadePadraoFormatada = `${anoPadrao}-${mesPadrao}-${diaPadrao}`;
+                
+                dataValidadeInput.value = dataValidadePadraoFormatada;
+            }
+            
+            // Atualizar texto de ajuda
+            const ajudaElement = dataValidadeInput.nextElementSibling;
+            if (ajudaElement && ajudaElement.classList.contains('form-text')) {
+                const dataReservaFormatada = new Date(dataReserva).toLocaleDateString('pt-BR');
+                const dataMaximaFormatadaBR = new Date(dataMaximaFormatada).toLocaleDateString('pt-BR');
+                ajudaElement.textContent = `A reserva expira nesta data (período de 1 a 7 dias. Máximo: ${dataMaximaFormatadaBR})`;
+            }
+        }
 
         function atualizarInfoUsuario() {
             const usuarioId = document.getElementById('usuario_id').value;
@@ -804,30 +815,6 @@ function atualizarDatasValidade() {
                 infoDiv.classList.add('d-none');
             }
         }
-        
-// Validar que a data de validade é posterior à data da reserva
-const dataReserva = new Date(reservaData.data_reserva);
-const dataValidade = new Date(reservaData.data_validade);
-
-if (dataValidade <= dataReserva) {
-    throw new Error('A data de validade deve ser posterior à data da reserva');
-}
-
-// Validar que não ultrapassa 7 dias - CÁLCULO CORRIGIDO
-const diferencaMs = dataValidade.getTime() - dataReserva.getTime();
-const diferencaDias = Math.ceil(diferencaMs / (1000 * 60 * 60 * 24));
-
-console.log('Data reserva:', dataReserva.toLocaleDateString('pt-BR'));
-console.log('Data validade:', dataValidade.toLocaleDateString('pt-BR'));
-console.log('Diferença em dias:', diferencaDias);
-
-if (diferencaDias > 7) {
-    throw new Error(`A reserva não pode ter validade superior a 7 dias. Período selecionado: ${diferencaDias} dias`);
-}
-
-if (diferencaDias < 1) {
-    throw new Error('A validade deve ser de pelo menos 1 dia');
-}
 
         async function salvarReserva() {
             const form = document.getElementById('formReserva');
@@ -851,6 +838,9 @@ if (diferencaDias < 1) {
                 mostrarBtnLoading(true);
                 erroDiv.classList.add('d-none');
 
+                console.log('🔄 Iniciando processo de reserva...');
+                console.log('📊 Dados da reserva:', reservaData);
+
                 // Verificar se já existe reserva ativa para o mesmo livro
                 const reservaExistente = todasReservas.find(r => 
                     r.livro_id == reservaData.livro_id && 
@@ -861,12 +851,24 @@ if (diferencaDias < 1) {
                     throw new Error('Este livro já possui uma reserva ativa');
                 }
 
+                // Validações locais antes de enviar para API
+                const dataReserva = new Date(reservaData.data_reserva);
+                const dataValidade = new Date(reservaData.data_validade);
 
+                if (dataValidade <= dataReserva) {
+                    throw new Error('A data de validade deve ser posterior à data da reserva');
+                }
 
+                const diferencaMs = dataValidade.getTime() - dataReserva.getTime();
+                const diferencaDias = Math.floor(diferencaMs / (1000 * 60 * 60 * 24));
 
+                if (diferencaDias > 7) {
+                    throw new Error(`A reserva não pode ter validade superior a 7 dias. Período selecionado: ${diferencaDias} dias`);
+                }
 
+                console.log('📤 Enviando para API...');
                 
-                // Fazer requisição para a API
+                // Fazer requisição para a API com tratamento de erro detalhado
                 const response = await fetch(`${API_BASE}/reservas`, {
                     method: 'POST',
                     headers: {
@@ -875,20 +877,60 @@ if (diferencaDias < 1) {
                     body: JSON.stringify(reservaData)
                 });
 
-                const data = await response.json();
+                console.log('📥 Status da resposta:', response.status);
+                console.log('📥 Resposta OK:', response.ok);
+
+                // Verificar se a resposta é válida
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Erro HTTP:', response.status, errorText);
+                    throw new Error(`Erro do servidor: ${response.status} - ${errorText}`);
+                }
+
+                // Tentar parsear a resposta JSON
+                let data;
+                try {
+                    const responseText = await response.text();
+                    console.log('📥 Resposta bruta:', responseText);
+                    
+                    if (!responseText) {
+                        throw new Error('Resposta vazia da API');
+                    }
+                    
+                    data = JSON.parse(responseText);
+                    console.log('📥 Resposta parseada:', data);
+                } catch (parseError) {
+                    console.error('❌ Erro ao parsear JSON:', parseError);
+                    throw new Error('Resposta inválida da API');
+                }
 
                 if (data.success) {
+                    console.log('✅ Reserva criada com sucesso na API');
                     // Fechar modal e recarregar dados
                     bootstrap.Modal.getInstance(document.getElementById('modalReserva')).hide();
                     await carregarReservas();
                     alert('✅ Reserva criada com sucesso!');
                 } else {
-                    throw new Error(data.error || 'Erro ao criar reserva');
+                    console.error('❌ Erro da API:', data);
+                    throw new Error(data.error || data.message || 'Erro desconhecido da API');
                 }
 
             } catch (error) {
-                console.error('❌ Erro ao salvar reserva:', error);
-                erroDiv.textContent = error.message;
+                console.error('❌ Erro completo ao salvar reserva:', error);
+                console.error('❌ Stack trace:', error.stack);
+                
+                let mensagemErro = error.message;
+                
+                // Mensagens mais amigáveis para erros comuns
+                if (error.message.includes('Failed to fetch')) {
+                    mensagemErro = 'Erro de conexão com o servidor. Verifique se o backend está rodando.';
+                } else if (error.message.includes('Network Error')) {
+                    mensagemErro = 'Erro de rede. Verifique sua conexão com a internet.';
+                } else if (error.message.includes('CORS')) {
+                    mensagemErro = 'Erro de configuração do servidor (CORS).';
+                }
+                
+                erroDiv.textContent = `Erro: ${mensagemErro}`;
                 erroDiv.classList.remove('d-none');
             } finally {
                 mostrarBtnLoading(false);
@@ -980,10 +1022,10 @@ if (diferencaDias < 1) {
             }
         }
 
-        // Funções auxiliares
+        // FUNÇÃO CORRIGIDA - REMOVER A LINHA QUE ESCONDE OS CARDS
         function mostrarLoading(mostrar) {
             document.getElementById('loading').style.display = mostrar ? 'block' : 'none';
-            document.getElementById('stats-container').style.display = mostrar ? 'none' : 'block';
+            // REMOVER ESTA LINHA: document.getElementById('stats-container').style.display = mostrar ? 'none' : 'block';
             document.getElementById('reservas-container').style.display = mostrar ? 'none' : 'block';
             document.getElementById('contador-resultados').style.display = mostrar ? 'none' : 'block';
         }
