@@ -536,67 +536,94 @@ async function carregarMultasReais() {
         }
 
         // Aplicar filtros - CORRIGIDA para atualizar estatísticas com dados filtrados
-        function aplicarFiltros() {
-            filtroStatus = document.getElementById('filtroStatus').value;
-            filtroPeriodo = document.getElementById('filtroPeriodo').value;
-            termoBusca = document.getElementById('buscaInput').value.toLowerCase().trim();
+        // Aplicar filtros - VERSÃO CORRIGIDA
+function aplicarFiltros() {
+    filtroStatus = document.getElementById('filtroStatus').value;
+    filtroPeriodo = document.getElementById('filtroPeriodo').value;
+    termoBusca = document.getElementById('buscaInput').value.toLowerCase().trim();
 
-            console.log('🔍 Aplicando filtros:', { filtroStatus, filtroPeriodo, termoBusca });
+    console.log('🔍 Aplicando filtros:', { filtroStatus, filtroPeriodo, termoBusca });
 
-            let multasFiltradas = [...todasMultas];
+    let multasFiltradas = [...todasMultas];
 
-            // Filtro por status
-            if (filtroStatus !== 'todos') {
-                multasFiltradas = multasFiltradas.filter(multa => multa.status === filtroStatus);
-                console.log(`📝 Filtro status "${filtroStatus}": ${multasFiltradas.length} multas`);
+    // Filtro por status
+    if (filtroStatus !== 'todos') {
+        multasFiltradas = multasFiltradas.filter(multa => multa.status === filtroStatus);
+        console.log(`📝 Filtro status "${filtroStatus}": ${multasFiltradas.length} multas`);
+    }
+
+    // Filtro por período - VERSÃO CORRIGIDA
+    if (filtroPeriodo !== 'todos') {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação de datas
+
+        multasFiltradas = multasFiltradas.filter(multa => {
+            // Determinar a data de referência baseada no status da multa
+            let dataReferencia;
+            
+            if (multa.status === 'pago' && multa.data_pagamento) {
+                // Para multas pagas, usar data do pagamento
+                dataReferencia = new Date(multa.data_pagamento);
+            } else if (multa.status === 'isento' && multa.data_devolucao_efetiva) {
+                // Para multas isentas, usar data de devolução
+                dataReferencia = new Date(multa.data_devolucao_efetiva);
+            } else if (multa.status === 'pendente') {
+                // Para multas pendentes, usar data de devolução prevista (quando entrou em atraso)
+                dataReferencia = new Date(multa.data_devolucao_prevista);
+            } else {
+                // Fallback: usar data do empréstimo
+                dataReferencia = new Date(multa.data_emprestimo);
             }
 
-            // Filtro por período
-            if (filtroPeriodo !== 'todos') {
-                const hoje = new Date();
-                multasFiltradas = multasFiltradas.filter(multa => {
-                    const dataMulta = new Date(multa.data_pagamento || multa.data_devolucao_efetiva || multa.data_emprestimo);
-                    
-                    switch (filtroPeriodo) {
-                        case 'hoje':
-                            return dataMulta.toDateString() === hoje.toDateString();
-                        case 'semana':
-                            const umaSemanaAtras = new Date(hoje.getTime() - 7 * 24 * 60 * 60 * 1000);
-                            return dataMulta >= umaSemanaAtras;
-                        case 'mes':
-                            return dataMulta.getMonth() === hoje.getMonth() && dataMulta.getFullYear() === hoje.getFullYear();
-                        case 'ano':
-                            return dataMulta.getFullYear() === hoje.getFullYear();
-                        default:
-                            return true;
-                    }
-                });
-                console.log(`📅 Filtro período "${filtroPeriodo}": ${multasFiltradas.length} multas`);
+            dataReferencia.setHours(0, 0, 0, 0); // Zerar horas para comparação
+
+            switch (filtroPeriodo) {
+                case 'hoje':
+                    return dataReferencia.getTime() === hoje.getTime();
+                
+                case 'semana':
+                    const inicioSemana = new Date(hoje);
+                    inicioSemana.setDate(hoje.getDate() - hoje.getDay()); // Domingo da semana atual
+                    inicioSemana.setHours(0, 0, 0, 0);
+                    return dataReferencia >= inicioSemana;
+                
+                case 'mes':
+                    return dataReferencia.getMonth() === hoje.getMonth() && 
+                           dataReferencia.getFullYear() === hoje.getFullYear();
+                
+                case 'ano':
+                    return dataReferencia.getFullYear() === hoje.getFullYear();
+                
+                default:
+                    return true;
             }
+        });
+        console.log(`📅 Filtro período "${filtroPeriodo}": ${multasFiltradas.length} multas`);
+    }
 
-            // Filtro por busca
-            if (termoBusca) {
-                multasFiltradas = multasFiltradas.filter(multa =>
-                    multa.usuario_nome.toLowerCase().includes(termoBusca) ||
-                    multa.livro_titulo.toLowerCase().includes(termoBusca) ||
-                    multa.usuario_matricula.toLowerCase().includes(termoBusca)
-                );
-                console.log(`🔎 Filtro busca "${termoBusca}": ${multasFiltradas.length} multas`);
-            }
+    // Filtro por busca
+    if (termoBusca) {
+        multasFiltradas = multasFiltradas.filter(multa =>
+            multa.usuario_nome.toLowerCase().includes(termoBusca) ||
+            multa.livro_titulo.toLowerCase().includes(termoBusca) ||
+            (multa.usuario_matricula && multa.usuario_matricula.toLowerCase().includes(termoBusca))
+        );
+        console.log(`🔎 Filtro busca "${termoBusca}": ${multasFiltradas.length} multas`);
+    }
 
-            // Salvar multas filtradas atuais
-            multasFiltradasAtuais = multasFiltradas;
+    // Salvar multas filtradas atuais
+    multasFiltradasAtuais = multasFiltradas;
 
-            // Atualizar contador
-            document.getElementById('contador-resultados').textContent = `${multasFiltradas.length} multa(s) encontrada(s)`;
+    // Atualizar contador
+    document.getElementById('contador-resultados').textContent = `${multasFiltradas.length} multa(s) encontrada(s)`;
 
-            // ATUALIZAR ESTATÍSTICAS COM OS DADOS FILTRADOS
-            atualizarEstatisticas(multasFiltradas);
+    // ATUALIZAR ESTATÍSTICAS COM OS DADOS FILTRADOS
+    atualizarEstatisticas(multasFiltradas);
 
-            // Renderizar multas
-            renderizarMultas(multasFiltradas);
-            renderizarHistorico(multasFiltradas.filter(m => m.status === 'pago' || m.status === 'isento'));
-        }
+    // Renderizar multas
+    renderizarMultas(multasFiltradas);
+    renderizarHistorico(multasFiltradas.filter(m => m.status === 'pago' || m.status === 'isento'));
+}
 
         // Renderizar lista de multas
         function renderizarMultas(multas) {
