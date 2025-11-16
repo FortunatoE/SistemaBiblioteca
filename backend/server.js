@@ -109,18 +109,31 @@ app.get('/api/estatisticas/multas', async (req, res) => {
     `, [dataInicial, dataFinal]);
     
     // MULTAS ISENTAS no período - AGORA COM VALOR ISENTADO
-    const [multasIsentas] = await connection.execute(`
-      SELECT 
-        COUNT(*) as total,
-        COALESCE(SUM(
+// MULTAS ISENTAS no período - VERSÃO CORRIGIDA
+const [multasIsentas] = await connection.execute(`
+  SELECT 
+    COUNT(*) as total,
+    COALESCE(SUM(
+      CASE 
+        -- Se já tinha multa calculada no sistema, usa esse valor
+        WHEN multa > 0 THEN multa
+        -- Se não tinha multa calculada, calcula baseado no atraso
+        WHEN data_devolucao_efetiva > data_devolucao_prevista THEN 
           DATEDIFF(data_devolucao_efetiva, data_devolucao_prevista) * 2.0
-        ), 0) as valor_isentado
-      FROM emprestimos 
-      WHERE isento = 1
-      AND status = 'devolvido'
-      AND data_devolucao_efetiva > data_devolucao_prevista
-      AND data_devolucao_efetiva BETWEEN ? AND ?
-    `, [dataInicial, dataFinal]);
+        -- Sem atraso, sem multa
+        ELSE 0
+      END
+    ), 0) as valor_isentado
+  FROM emprestimos 
+  WHERE isento = 1
+  AND status = 'devolvido'
+  AND data_devolucao_efetiva BETWEEN ? AND ?
+`, [dataInicial, dataFinal]);
+
+console.log('✅ Multas isentas:', {
+  total: multasIsentas[0].total,
+  valor_isentado: multasIsentas[0].valor_isentado
+});
     
     // EVOLUÇÃO MENSAL de multas pagas
     const [evolucaoMensal] = await connection.execute(`
