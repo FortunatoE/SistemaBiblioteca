@@ -71,6 +71,7 @@ app.get('/api/debug/tabelas', async (req, res) => {
 // Estatísticas de multas para o dashboard
 // Estatísticas de multas - VERSÃO CORRIGIDA E SIMPLIFICADA
 // Estatísticas de multas - VERSÃO CORRIGIDA SEM ERROS DE SINTAXE
+// Estatísticas de multas - VERSÃO COM VALOR ISENTADO
 app.get('/api/estatisticas/multas', async (req, res) => {
   try {
     const { data_inicial, data_final } = req.query;
@@ -107,12 +108,17 @@ app.get('/api/estatisticas/multas', async (req, res) => {
       AND data_devolucao_efetiva BETWEEN ? AND ?
     `, [dataInicial, dataFinal]);
     
-    // MULTAS ISENTAS no período
+    // MULTAS ISENTAS no período - AGORA COM VALOR ISENTADO
     const [multasIsentas] = await connection.execute(`
-      SELECT COUNT(*) as total
+      SELECT 
+        COUNT(*) as total,
+        COALESCE(SUM(
+          DATEDIFF(data_devolucao_efetiva, data_devolucao_prevista) * 2.0
+        ), 0) as valor_isentado
       FROM emprestimos 
       WHERE isento = 1
       AND status = 'devolvido'
+      AND data_devolucao_efetiva > data_devolucao_prevista
       AND data_devolucao_efetiva BETWEEN ? AND ?
     `, [dataInicial, dataFinal]);
     
@@ -156,7 +162,8 @@ app.get('/api/estatisticas/multas', async (req, res) => {
     console.log('✅ Estatísticas de multas calculadas:', {
       pendentes: multasPendentes[0].total,
       pagas: multasPagas[0].total,
-      isentas: multasIsentas[0].total
+      isentas: multasIsentas[0].total,
+      valor_isentado: multasIsentas[0].valor_isentado
     });
 
     res.json({
@@ -171,7 +178,8 @@ app.get('/api/estatisticas/multas', async (req, res) => {
           valor_total: parseFloat(multasPagas[0].valor_total)
         },
         isentas: {
-          total: multasIsentas[0].total
+          total: multasIsentas[0].total,
+          valor_isentado: parseFloat(multasIsentas[0].valor_isentado) // NOVO CAMPO
         },
         evolucao_mensal: evolucaoMensal.map(item => ({
           mes: item.mes,

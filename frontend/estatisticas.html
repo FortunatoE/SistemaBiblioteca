@@ -376,18 +376,19 @@
                             <small class="text-muted" id="multas-pagas-valor"></small>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-4">
-                        <div class="stats-card text-center p-4">
-                            <div class="card-icon text-info">
-                                <i class="fas fa-gift"></i>
-                            </div>
-                            <h3 class="stats-number" id="multas-isentas-total">
-                                <span class="loading-spinner"></span>
-                            </h3>
-                            <p class="text-muted">Multas Isentas</p>
-                        </div>
-                    </div>
-                </div>
+<div class="col-md-4 mb-4">
+    <div class="stats-card text-center p-4">
+        <div class="card-icon text-info">
+            <i class="fas fa-gift"></i>
+        </div>
+        <h3 class="stats-number" id="multas-isentas-total">
+            <span class="loading-spinner"></span>
+        </h3>
+        <p class="text-muted">Multas Isentas</p>
+        <!-- ADICIONE ESTA LINHA PARA MOSTRAR O VALOR ISENTADO -->
+        <small class="text-muted" id="multas-isentas-valor">R$ 0,00</small>
+    </div>
+</div>
 
                 <div class="row">
                     <!-- Gráfico de Evolução Mensal -->
@@ -467,18 +468,18 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        class EstatisticasBiblioteca {
-            constructor() {
-                this.apiUrl = 'http://localhost:3000/api';
-                this.charts = {};
-                this.init();
-            }
+    class EstatisticasBiblioteca {
+        constructor() {
+        this.apiUrl = 'http://localhost:3000/api';
+        this.charts = {};
+        this.init();
+    }
+    async init() {
+        this.configurarDatasPadrao();
+        await this.carregarTodosOsDados();
+        this.configurarEventos();
+    }
 
-            async init() {
-                this.configurarDatasPadrao();
-                await this.carregarTodosOsDados();
-                this.configurarEventos();
-            }
 
             configurarDatasPadrao() {
                 const dataFinal = new Date();
@@ -555,6 +556,10 @@
                 }
             }
 
+// No método que atualiza os cards de multas, adicione:
+
+
+            
             atualizarCardsEstatisticas(dados) {
                 document.getElementById('total-emprestimos').textContent = dados.total_emprestimos || 0;
                 document.getElementById('emprestimos-ativos').textContent = dados.emprestimos_ativos || 0;
@@ -736,26 +741,32 @@ async carregarEstatisticasMultas() {
         const dataInicial = document.getElementById('dataInicial').value;
         const dataFinal = document.getElementById('dataFinal').value;
         
-        console.log('📊 Carregando estatísticas de multas...');
+        console.log('📊 Carregando estatísticas de multas...', { dataInicial, dataFinal });
         
         const response = await fetch(
             `${this.apiUrl}/estatisticas/multas?data_inicial=${dataInicial}&data_final=${dataFinal}`
         );
         
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+            const errorText = await response.text();
+            console.error('❌ Erro HTTP:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
         
         const data = await response.json();
         
         if (data.success) {
             console.log('✅ Dados de multas carregados:', data.data);
+            console.log('💰 Evolução mensal:', data.data.evolucao_mensal);
+            console.log('👥 Top usuários:', data.data.top_usuarios);
+            
             this.atualizarCardsMultas(data.data);
             this.criarGraficoEvolucaoMultas(data.data.evolucao_mensal);
             this.atualizarTopUsuariosMultas(data.data.top_usuarios);
             await this.carregarDistribuicaoMultas();
             this.esconderErro('multas');
         } else {
+            console.error('❌ Erro na API:', data.error);
             throw new Error(data.error || 'Erro na API');
         }
     } catch (error) {
@@ -794,15 +805,21 @@ async carregarDistribuicaoMultas() {
         const dataInicial = document.getElementById('dataInicial').value;
         const dataFinal = document.getElementById('dataFinal').value;
         
+        console.log('📈 Carregando distribuição de multas...', { dataInicial, dataFinal });
+        
         const response = await fetch(
             `${this.apiUrl}/estatisticas/multas-distribuicao?data_inicial=${dataInicial}&data_final=${dataFinal}`
         );
         
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const errorText = await response.text();
+            console.error('❌ Erro HTTP na distribuição:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
         
         const data = await response.json();
+        
+        console.log('📊 Dados de distribuição:', data);
         
         if (data.success) {
             this.criarGraficoDistribuicaoMultas(data.data);
@@ -811,149 +828,216 @@ async carregarDistribuicaoMultas() {
             throw new Error(data.error || 'Erro na API');
         }
     } catch (error) {
-        console.error('Erro ao carregar distribuição de multas:', error);
+        console.error('❌ Erro ao carregar distribuição de multas:', error);
         this.mostrarErroNoGrafico('distribuicao-multas', 'Erro ao carregar distribuição: ' + error.message);
         this.criarGraficoVazio('distribuicaoMultasChart', 'Distribuição por Faixa de Valor');
     }
 }
 
 
-            atualizarCardsMultas(dados) {
-                document.getElementById('multas-pendentes-total').textContent = dados.pendentes.total || 0;
-                document.getElementById('multas-pendentes-valor').textContent = `R$ ${(dados.pendentes.valor_total || 0).toFixed(2)}`;
-                
-                document.getElementById('multas-pagas-total').textContent = dados.pagas.total || 0;
-                document.getElementById('multas-pagas-valor').textContent = `R$ ${(dados.pagas.valor_total || 0).toFixed(2)}`;
-                
-                document.getElementById('multas-isentas-total').textContent = dados.isentas.total || 0;
-            }
+atualizarCardsMultas(dados) {
+    console.log('📊 Dados recebidos para multas:', dados); // DEBUG
+    
+    document.getElementById('multas-pendentes-total').textContent = dados.pendentes.total || 0;
+    document.getElementById('multas-pendentes-valor').textContent = `R$ ${(dados.pendentes.valor_total || 0).toFixed(2)}`;
+    
+    document.getElementById('multas-pagas-total').textContent = dados.pagas.total || 0;
+    document.getElementById('multas-pagas-valor').textContent = `R$ ${(dados.pagas.valor_total || 0).toFixed(2)}`;
+    
+    document.getElementById('multas-isentas-total').textContent = dados.isentas.total || 0;
+    
+    // ATUALIZAR O VALOR ISENTADO - CORRIGIDO
+    const valorIsentado = dados.isentas.valor_isentado || 0;
+    document.getElementById('multas-isentas-valor').textContent = `Valor isentado: R$ ${valorIsentado.toFixed(2)}`;
+    
+    console.log('✅ Valor isentado atualizado:', valorIsentado); // DEBUG
+}
 
             criarGraficoEvolucaoMultas(dados) {
-                this.destruirGrafico('evolucaoMultasChart');
-                
-                if (!dados || dados.length === 0) {
-                    this.criarGraficoVazio('evolucaoMultasChart', 'Evolução Mensal de Multas');
-                    return;
+    this.destruirGrafico('evolucaoMultasChart');
+    
+    console.log('📈 Criando gráfico de evolução:', dados);
+    
+    if (!dados || dados.length === 0) {
+        console.log('📭 Nenhum dado para evolução mensal');
+        this.criarGraficoVazio('evolucaoMultasChart', 'Evolução Mensal de Multas');
+        return;
+    }
+    
+    const ctx = document.getElementById('evolucaoMultasChart').getContext('2d');
+    
+    // Garantir que os dados sejam números
+    const quantidades = dados.map(item => Number(item.quantidade) || 0);
+    const valores = dados.map(item => Number(item.valor_total) || 0);
+    
+    this.charts.evolucaoMultasChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dados.map(item => {
+                const [ano, mes] = item.mes.split('-');
+                return `${mes}/${ano}`;
+            }),
+            datasets: [
+                {
+                    label: 'Quantidade de Multas',
+                    data: quantidades,
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Valor Total (R$)',
+                    data: valores,
+                    borderColor: '#f39c12',
+                    backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    yAxisID: 'y1'
                 }
-                
-                const ctx = document.getElementById('evolucaoMultasChart').getContext('2d');
-                
-                this.charts.evolucaoMultasChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: dados.map(item => {
-                            const [ano, mes] = item.mes.split('-');
-                            return `${mes}/${ano}`;
-                        }),
-                        datasets: [
-                            {
-                                label: 'Quantidade de Multas',
-                                data: dados.map(item => item.quantidade),
-                                borderColor: '#e74c3c',
-                                backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                                tension: 0.4,
-                                fill: true,
-                                yAxisID: 'y'
-                            },
-                            {
-                                label: 'Valor Total (R$)',
-                                data: dados.map(item => item.valor_total),
-                                borderColor: '#f39c12',
-                                backgroundColor: 'rgba(243, 156, 18, 0.1)',
-                                tension: 0.4,
-                                fill: true,
-                                yAxisID: 'y1'
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                type: 'linear',
-                                display: true,
-                                position: 'left',
-                                title: {
-                                    display: true,
-                                    text: 'Quantidade'
-                                }
-                            },
-                            y1: {
-                                type: 'linear',
-                                display: true,
-                                position: 'right',
-                                title: {
-                                    display: true,
-                                    text: 'Valor (R$)'
-                                },
-                                grid: {
-                                    drawOnChartArea: false
-                                }
-                            }
-                        }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Mês'
                     }
-                });
+                },
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Quantidade'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Valor (R$)'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
             }
+        }
+    });
+    
+    console.log('✅ Gráfico de evolução criado com sucesso');
+}
 
             criarGraficoDistribuicaoMultas(dados) {
-                this.destruirGrafico('distribuicaoMultasChart');
-                
-                if (!dados || !dados.faixas || dados.faixas.length === 0) {
-                    this.criarGraficoVazio('distribuicaoMultasChart', 'Distribuição por Faixa de Valor');
-                    return;
-                }
-                
-                const ctx = document.getElementById('distribuicaoMultasChart').getContext('2d');
-                
-                this.charts.distribuicaoMultasChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: dados.faixas.map(faixa => `R$ ${faixa}`),
-                        datasets: [{
-                            label: 'Quantidade de Multas',
-                            data: dados.quantidades,
-                            backgroundColor: 'rgba(52, 152, 219, 0.8)',
-                            borderColor: '#3498db',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Distribuição por Faixa de Valor'
-                            }
-                        }
+    this.destruirGrafico('distribuicaoMultasChart');
+    
+    console.log('💰 Criando gráfico de distribuição:', dados);
+    
+    if (!dados || !dados.faixas || dados.faixas.length === 0) {
+        console.log('📭 Nenhum dado para distribuição');
+        this.criarGraficoVazio('distribuicaoMultasChart', 'Distribuição por Faixa de Valor');
+        return;
+    }
+    
+    const ctx = document.getElementById('distribuicaoMultasChart').getContext('2d');
+    
+    // Garantir que as quantidades sejam números
+    const quantidades = dados.quantidades.map(qtd => Number(qtd) || 0);
+    
+    this.charts.distribuicaoMultasChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dados.faixas.map(faixa => `R$ ${faixa}`),
+            datasets: [{
+                label: 'Quantidade de Multas',
+                data: quantidades,
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                    '#FF9F40', '#8AC926', '#1982C4', '#6A4C93', '#F15BB5'
+                ],
+                borderColor: '#2c3e50',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'Distribuição de Multas por Faixa de Valor',
+                    font: {
+                        size: 16
                     }
-                });
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Quantidade de Multas'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Faixa de Valor'
+                    }
+                }
             }
+        }
+    });
+    
+    console.log('✅ Gráfico de distribuição criado com sucesso');
+}
 
             atualizarTopUsuariosMultas(usuarios) {
-                const tbody = document.getElementById('top-usuarios-multas-body');
-                
-                if (!usuarios || usuarios.length === 0) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="text-center text-muted">
-                                Nenhum usuário com multas no período
-                            </td>
-                        </tr>
-                    `;
-                    return;
-                }
+    const tbody = document.getElementById('top-usuarios-multas-body');
+    
+    console.log('👥 Atualizando top usuários:', usuarios);
+    
+    if (!usuarios || usuarios.length === 0) {
+        console.log('📭 Nenhum usuário com multas');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-muted">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Nenhum usuário com multas no período selecionado
+                </td>
+            </tr>
+        `;
+        return;
+    }
 
-                tbody.innerHTML = usuarios.map(usuario => `
-                    <tr>
-                        <td>${usuario.nome}</td>
-                        <td>${usuario.matricula}</td>
-                        <td>${usuario.total_multas}</td>
-                        <td>R$ ${(usuario.valor_total || 0).toFixed(2)}</td>
-                    </tr>
-                `).join('');
-            }
+    tbody.innerHTML = usuarios.map(usuario => `
+        <tr>
+            <td>${usuario.nome || 'N/A'}</td>
+            <td>${usuario.matricula || 'N/A'}</td>
+            <td class="text-center">${usuario.total_multas || 0}</td>
+            <td class="text-end">R$ ${(usuario.valor_total || 0).toFixed(2)}</td>
+        </tr>
+    `).join('');
+    
+    console.log('✅ Tabela de top usuários atualizada');
+}
 
             // Métodos para criar gráficos
             criarGraficoEmprestimosDiarios(dados) {
@@ -1143,11 +1227,24 @@ async carregarDistribuicaoMultas() {
                 `).join('');
             }
 
-            atualizarCardsAtraso(dados) {
-                document.getElementById('total-atraso').textContent = dados.total_atraso || 0;
-                document.getElementById('multa-pendente').textContent = `R$ ${(dados.multa_pendente || 0).toFixed(2)}`;
-                document.getElementById('dias-atraso-medio').textContent = (dados.dias_atraso_medio || 0).toFixed(1);
-            }
+atualizarCardsAtraso(dados) {
+    // Verificar se os elementos existem antes de tentar atualizá-los
+    const totalAtrasoElement = document.getElementById('total-atraso');
+    const multaPendenteElement = document.getElementById('multa-pendente');
+    const diasAtrasoMedioElement = document.getElementById('dias-atraso-medio');
+    
+    if (totalAtrasoElement) {
+        totalAtrasoElement.textContent = dados.total_atraso || 0;
+    }
+    
+    if (multaPendenteElement) {
+        multaPendenteElement.textContent = `R$ ${(dados.multa_pendente || 0).toFixed(2)}`;
+    }
+    
+    if (diasAtrasoMedioElement) {
+        diasAtrasoMedioElement.textContent = (dados.dias_atraso_medio || 0).toFixed(1);
+    }
+}
 
             // Métodos de tratamento de erro
             mostrarErroNoGrafico(tipo, mensagem) {
