@@ -66,13 +66,9 @@ app.get('/api/debug/tabelas', async (req, res) => {
 // ========== ROTAS DE ESTATÍSTICAS DE MULTAS CORRIGIDAS ==========
 
 // Estatísticas de multas para o dashboard
-// ========== ROTAS DE ESTATÍSTICAS DE MULTAS - VERSÃO 100% REAL ==========
-
-// Estatísticas de multas para o dashboard
 // ========== ROTAS DE ESTATÍSTICAS DE MULTAS - VERSÃO CORRIGIDA ==========
 
 // Estatísticas de multas para o dashboard
-// Estatísticas de multas para o dashboard - SEM OBSERVAÇÕES
 app.get('/api/estatisticas/multas', async (req, res) => {
   try {
     const { data_inicial, data_final } = req.query;
@@ -1285,11 +1281,13 @@ app.get('/api/usuarios/:id/emprestimos-ativos', async (req, res) => {
 
 // ========== ROTAS PRINCIPAIS ==========
 
-// Rota de livros (já existente)
+// ========== ROTAS DE LIVROS ==========
+
+// GET /api/livros - Listar todos os livros
 app.get('/api/livros', async (req, res) => {
   try {
     const connection = await mysqlPool.getConnection();
-    const [livros] = await connection.execute('SELECT * FROM livros');
+    const [livros] = await connection.execute('SELECT * FROM livros ORDER BY titulo');
     connection.release();
     
     res.json({
@@ -1306,35 +1304,201 @@ app.get('/api/livros', async (req, res) => {
   }
 });
 
+// POST /api/livros - Criar novo livro
+app.post('/api/livros', async (req, res) => {
+  try {
+    const { titulo, autor, isbn, editora, ano_publicacao, categoria, quantidade_total, localizacao } = req.body;
+
+    // Validações
+    if (!titulo || !autor) {
+      return res.status(400).json({
+        success: false,
+        error: 'Título e autor são obrigatórios'
+      });
+    }
+
+    const connection = await mysqlPool.getConnection();
+    
+    // Verificar se ISBN já existe (se fornecido)
+    if (isbn) {
+      const [existeIsbn] = await connection.execute(
+        'SELECT id FROM livros WHERE isbn = ?',
+        [isbn]
+      );
+      
+      if (existeIsbn.length > 0) {
+        connection.release();
+        return res.status(400).json({
+          success: false,
+          error: 'ISBN já cadastrado'
+        });
+      }
+    }
+
+    // Inserir livro - quantidade_disponivel = quantidade_total (inicialmente)
+    const [result] = await connection.execute(
+      `INSERT INTO livros 
+       (titulo, autor, isbn, editora, ano_publicacao, categoria, quantidade_total, quantidade_disponivel, localizacao) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [titulo, autor, isbn || null, editora || null, ano_publicacao || null, categoria || null, quantidade_total, quantidade_total, localizacao || null]
+    );
+    
+    // Buscar livro criado
+    const [novoLivro] = await connection.execute(
+      'SELECT * FROM livros WHERE id = ?',
+      [result.insertId]
+    );
+    
+    connection.release();
+
+    res.status(201).json({
+      success: true,
+      data: novoLivro[0],
+      message: 'Livro adicionado com sucesso!'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao adicionar livro',
+      message: error.message
+    });
+  }
+});
+
+// PUT /api/livros/:id - Atualizar livro COM CÁLCULO CORRETO DE DISPONÍVEIS
+app.put('/api/livros/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { titulo, autor, isbn, editora, ano_publicacao, categoria, quantidade_total, localizacao } = req.body;
+
+    const connection = await mysqlPool.getConnection();
+    
+    // Verificar se livro existe
+    const [livroExistente] = await connection.execute(
+      'SELECT id, quantidade_total, quantidade_disponivel FROM livros WHERE id = ?',
+      [id]
+    );
+    
+    if (livroExistente.length === 0) {
+      connection.release();
+      return res.status(404).json({
+        success: false,
+        error: 'Livro não encontrado'
+      });
+    }
+
+    const livroAtual = livroExistente[0];
+    
+    // Calcular nova quantidade disponível
+    const quantidadeEmprestada = livroAtual.quantidade_total - livroAtual.quantidade_disponivel;
+    const novaQuantidadeDisponivel = Math.max(0, quantidade_total - quantidadeEmprestada);
+
+    // Atualizar livro COM CÁLCULO CORRETO
+    await connection.execute(
+      `UPDATE livros 
+       SET titulo = ?, autor = ?, isbn = ?, editora = ?, ano_publicacao = ?, 
+           categoria = ?, quantidade_total = ?, quantidade_disponivel = ?, localizacao = ?
+       WHERE id = ?`,
+      [titulo, autor, isbn, editora, ano_publicacao, categoria, quantidade_total, novaQuantidadeDisponivel, localizacao, id]
+    );
+    
+    // Buscar livro atualizado
+    const [livroAtualizado] = await connection.execute(
+      'SELECT * FROM livros WHERE id = ?',
+      [id]
+    );
+    
+    connection.release();
+
+    res.json({
+      success: true,
+      data: livroAtualizado[0],
+      message: 'Livro atualizado com sucesso!'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao atualizar livro',
+      message: error.message
+    });
+  }
+});
+
+// DELETE /api/livros/:id - Excluir livro
+app.delete('/api/livros/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const connection = await mysqlPool.getConnection();
+    
+    // Verificar se livro existe
+    const [livroExistente] = await connection.execute(
+      'SELECT id, titulo FROM livros WHERE id = ?',
+      [id]
+    );
+    
+    if (livroExistente.length === 0) {
+      connection.release();
+      return res.status(404).json({
+        success: false,
+        error: 'Livro não encontrado'
+      });
+    }
+
+    // Verificar se livro tem empréstimos ativos
+    const [emprestimosAtivos] = await connection.execute(
+      'SELECT id FROM emprestimos WHERE livro_id = ? AND status = "ativo"',
+      [id]
+    );
+    
+    if (emprestimosAtivos.length > 0) {
+      connection.release();
+      return res.status(400).json({
+        success: false,
+        error: 'Não é possível excluir livro com empréstimos ativos'
+      });
+    }
+
+    // Excluir livro
+    await connection.execute('DELETE FROM livros WHERE id = ?', [id]);
+    
+    connection.release();
+
+    res.json({
+      success: true,
+      message: 'Livro excluído com sucesso!'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao excluir livro',
+      message: error.message
+    });
+  }
+});
+
 // Dashboard - Estatísticas
-app.get('/api/dashboard/estatisticas', async (req, res) => {
+// GET /api/acervo/estatisticas - Estatísticas do acervo
+app.get('/api/acervo/estatisticas', async (req, res) => {
   try {
     const connection = await mysqlPool.getConnection();
     
     // Total de livros
     const [totalLivros] = await connection.execute('SELECT COUNT(*) as total FROM livros');
     
-    // Empréstimos ativos
-    const [emprestimosAtivos] = await connection.execute(
-      'SELECT COUNT(*) as total FROM emprestimos WHERE status = "ativo"'
-    );
-    
-   // Reservas ativas (adicionar ao código existente)
-    const [reservasAtivas] = await connection.execute(
-      'SELECT COUNT(*) as total FROM reservas WHERE status = "ativa"'
-    );
-    
-    // Empréstimos em atraso
-    const [emprestimosAtraso] = await connection.execute(
-      'SELECT COUNT(*) as total FROM emprestimos WHERE status = "ativo" AND data_devolucao_prevista < CURDATE()'
-    );
-    
-    // Total de usuários
-    const [totalUsuarios] = await connection.execute('SELECT COUNT(*) as total FROM usuarios WHERE ativo = true');
-    
     // Livros disponíveis
     const [livrosDisponiveis] = await connection.execute(
       'SELECT SUM(quantidade_disponivel) as total FROM livros'
+    );
+    
+    // Livros emprestados - CORRIGIDO
+    const [livrosEmprestados] = await connection.execute(
+      'SELECT COUNT(*) as total FROM emprestimos WHERE status = "ativo"'
+    );
+    
+    // Total de categorias
+    const [totalCategorias] = await connection.execute(
+      'SELECT COUNT(DISTINCT categoria) as total FROM livros WHERE categoria IS NOT NULL'
     );
 
     connection.release();
@@ -1343,18 +1507,16 @@ app.get('/api/dashboard/estatisticas', async (req, res) => {
       success: true,
       data: {
         total_livros: totalLivros[0].total,
-        emprestimos_ativos: emprestimosAtivos[0].total,
-        reservas_ativas: reservasAtivas[0].total, // ← NOVO CAMPO
-        emprestimos_atraso: emprestimosAtraso[0].total,
-        total_usuarios: totalUsuarios[0].total,
-        livros_disponiveis: livrosDisponiveis[0].total || 0
+        livros_disponiveis: livrosDisponiveis[0].total || 0,
+        livros_emprestados: livrosEmprestados[0].total || 0,
+        total_categorias: totalCategorias[0].total
       }
     });
     
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: 'Erro ao carregar estatísticas',
+      error: 'Erro ao carregar estatísticas do acervo',
       message: error.message
     });
   }
@@ -1872,10 +2034,10 @@ app.get('/api/acervo/estatisticas', async (req, res) => {
       'SELECT SUM(quantidade_disponivel) as total FROM livros'
     );
     
-    // Livros emprestados
-    const [livrosEmprestados] = await connection.execute(
-      'SELECT SUM(quantidade_total - quantidade_disponivel) as total FROM livros'
-    );
+// Livros emprestados - VERSÃO CORRIGIDA
+const [livrosEmprestados] = await connection.execute(
+  'SELECT COUNT(*) as total FROM emprestimos WHERE status = "ativo"'
+);
     
     // Total de categorias
     const [totalCategorias] = await connection.execute(
@@ -1929,6 +2091,7 @@ app.get('/api/acervo/categorias', async (req, res) => {
 });
 
 // PUT /api/livros/:id - Atualizar livro
+// PUT /api/livros/:id - Atualizar livro COM CÁLCULO CORRETO DE DISPONÍVEIS
 app.put('/api/livros/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1938,7 +2101,7 @@ app.put('/api/livros/:id', async (req, res) => {
     
     // Verificar se livro existe
     const [livroExistente] = await connection.execute(
-      'SELECT id FROM livros WHERE id = ?',
+      'SELECT id, quantidade_total, quantidade_disponivel FROM livros WHERE id = ?',
       [id]
     );
     
@@ -1950,13 +2113,19 @@ app.put('/api/livros/:id', async (req, res) => {
       });
     }
 
-    // Atualizar livro
+    const livroAtual = livroExistente[0];
+    
+    // Calcular nova quantidade disponível
+    const quantidadeEmprestada = livroAtual.quantidade_total - livroAtual.quantidade_disponivel;
+    const novaQuantidadeDisponivel = Math.max(0, quantidade_total - quantidadeEmprestada);
+
+    // Atualizar livro COM CÁLCULO CORRETO
     await connection.execute(
       `UPDATE livros 
        SET titulo = ?, autor = ?, isbn = ?, editora = ?, ano_publicacao = ?, 
-           categoria = ?, quantidade_total = ?, localizacao = ?
+           categoria = ?, quantidade_total = ?, quantidade_disponivel = ?, localizacao = ?
        WHERE id = ?`,
-      [titulo, autor, isbn, editora, ano_publicacao, categoria, quantidade_total, localizacao, id]
+      [titulo, autor, isbn, editora, ano_publicacao, categoria, quantidade_total, novaQuantidadeDisponivel, localizacao, id]
     );
     
     // Buscar livro atualizado
