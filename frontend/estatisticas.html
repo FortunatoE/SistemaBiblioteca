@@ -730,6 +730,7 @@
 
             // NOVOS MÉTODOS PARA ESTATÍSTICAS DE MULTAS
 // NO estatisticas.html - Método corrigido SEM dados simulados
+// Método corrigido no frontend
 async carregarEstatisticasMultas() {
     try {
         const dataInicial = document.getElementById('dataInicial').value;
@@ -742,7 +743,7 @@ async carregarEstatisticasMultas() {
         );
         
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
         }
         
         const data = await response.json();
@@ -760,7 +761,6 @@ async carregarEstatisticasMultas() {
     } catch (error) {
         console.error('❌ Erro ao carregar estatísticas de multas:', error);
         this.mostrarErroNoGrafico('multas', 'Erro ao carregar dados de multas: ' + error.message);
-        // Limpar os dados em caso de erro
         this.limparDadosMultas();
     }
 }

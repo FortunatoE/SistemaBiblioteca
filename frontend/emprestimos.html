@@ -296,18 +296,53 @@
                 }
             }
 
-            // FUNÇÃO PARA CALCULAR MULTA PENDENTE
+            // FUNÇÃO CORRIGIDA PARA CALCULAR MULTA PENDENTE
             calcularMultaPendente(emprestimo) {
+                // Se já tem multa calculada no banco, usar esse valor
+                if (emprestimo.multa && emprestimo.multa > 0) {
+                    return parseFloat(emprestimo.multa);
+                }
+                
+                // Para empréstimos ativos em atraso, calcular multa
                 if (emprestimo.status === 'ativo') {
                     const hoje = new Date();
                     const dataPrevista = new Date(emprestimo.data_devolucao_prevista);
                     
+                    // CORREÇÃO: Resetar horas para comparar apenas as datas
+                    hoje.setHours(0, 0, 0, 0);
+                    dataPrevista.setHours(0, 0, 0, 0);
+                    
+                    // Só considerar atraso se a data atual for MAIOR que a data prevista
                     if (hoje > dataPrevista) {
-                        const diasAtraso = Math.ceil((hoje - dataPrevista) / (1000 * 60 * 60 * 24));
-                        return diasAtraso * 2.0; // R$ 2,00 por dia
+                        const umDiaMs = 1000 * 60 * 60 * 24;
+                        const diferencaMs = hoje - dataPrevista;
+                        const diasAtraso = Math.floor(diferencaMs / umDiaMs); // Usar Math.floor
+                        
+                        // Garantir pelo menos 1 dia de atraso
+                        const diasAtrasoCalculado = Math.max(1, diasAtraso);
+                        const multaCalculada = diasAtrasoCalculado * 2.0;
+                        
+                        // Arredondar para 2 casas decimais
+                        return Math.round(multaCalculada * 100) / 100;
                     }
                 }
-                return parseFloat(emprestimo.multa) || 0;
+                
+                return 0;
+            }
+
+            // CORREÇÃO: Função para verificar se está atrasado
+            estaAtrasado(emprestimo) {
+                if (emprestimo.status !== 'ativo') return false;
+                
+                const hoje = new Date();
+                const dataPrevista = new Date(emprestimo.data_devolucao_prevista);
+                
+                // Resetar horas para comparar apenas as datas
+                hoje.setHours(0, 0, 0, 0);
+                dataPrevista.setHours(0, 0, 0, 0);
+                
+                // Só está atrasado se hoje for DEPOIS da data prevista
+                return hoje > dataPrevista;
             }
 
             aplicarFiltroAtual() {
@@ -326,10 +361,8 @@
                 // Aplicar filtro de status
                 if (this.filtroStatus !== 'todos') {
                     if (this.filtroStatus === 'atrasado') {
-                        const hoje = new Date();
                         emprestimosFiltrados = emprestimosFiltrados.filter(emp => {
-                            const dataPrevista = new Date(emp.data_devolucao_prevista);
-                            return emp.status === 'ativo' && hoje > dataPrevista;
+                            return this.estaAtrasado(emp);
                         });
                     } else {
                         emprestimosFiltrados = emprestimosFiltrados.filter(emp => emp.status === this.filtroStatus);
@@ -359,11 +392,9 @@
                     `;
                     return;
                 }
-
+                
                 const html = this.emprestimosFiltrados.map(emp => {
-                    const hoje = new Date();
-                    const dataPrevista = new Date(emp.data_devolucao_prevista);
-                    const estaAtrasado = emp.status === 'ativo' && hoje > dataPrevista;
+                    const estaAtrasado = this.estaAtrasado(emp);
                     const multaCalculada = this.calcularMultaPendente(emp);
                     const temMulta = multaCalculada > 0;
 
@@ -415,12 +446,10 @@
                 const total = emprestimosParaEstatisticas.length;
                 const ativos = emprestimosParaEstatisticas.filter(emp => emp.status === 'ativo').length;
                 const atrasados = emprestimosParaEstatisticas.filter(emp => {
-                    const hoje = new Date();
-                    const dataPrevista = new Date(emp.data_devolucao_prevista);
-                    return emp.status === 'ativo' && hoje > dataPrevista;
+                    return this.estaAtrasado(emp);
                 }).length;
                 
-                // CALCULAR TOTAL DE MULTAS APENAS DOS EMPRÉSTIMOS FILTRADOS
+                // CALCULAR TOTAL DE MULTAS CORRETAMENTE
                 const totalMultas = emprestimosParaEstatisticas.reduce((sum, emp) => {
                     const multa = this.calcularMultaPendente(emp);
                     return sum + multa;

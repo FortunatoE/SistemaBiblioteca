@@ -458,122 +458,51 @@
         }
 
         // Buscar multas reais do banco
-        async function carregarMultasReais() {
-            try {
-                // Buscar empréstimos com multas
-                const response = await fetch(`${API_BASE}/emprestimos`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    todasMultas = data.data
-                        .filter(emp => emp.multa > 0 || 
-                                (emp.status === 'ativo' && new Date(emp.data_devolucao_prevista) < new Date()))
-                        .map(emp => {
-                            const dataPrevista = new Date(emp.data_devolucao_prevista);
-                            const hoje = new Date();
-                            let diasAtraso = 0;
-                            let valorMulta = emp.multa || 0;
-                            let status = 'pendente';
+ // Buscar multas reais do banco - VERSÃO CORRIGIDA
+async function carregarMultasReais() {
+    try {
+        console.log('📋 Buscando multas do banco...');
+        
+        // Usar a rota específica de multas
+        const response = await fetch(`${API_BASE}/multas`);
+        const data = await response.json();
+        
+        if (data.success) {
+            todasMultas = data.data.map(multa => {
+                return {
+                    id: multa.id,
+                    usuario_id: multa.usuario_id,
+                    usuario_nome: multa.usuario_nome,
+                    usuario_matricula: multa.usuario_matricula,
+                    livro_id: multa.livro_id,
+                    livro_titulo: multa.livro_titulo,
+                    livro_autor: multa.livro_autor,
+                    data_emprestimo: multa.data_emprestimo,
+                    data_devolucao_prevista: multa.data_devolucao_prevista,
+                    data_devolucao_efetiva: multa.data_devolucao_efetiva,
+                    dias_atraso: multa.dias_atraso || 
+                        (multa.status === 'ativo' && new Date(multa.data_devolucao_prevista) < new Date() ? 
+                         Math.ceil((new Date() - new Date(multa.data_devolucao_prevista)) / (1000 * 60 * 60 * 24)) : 0),
+                    valor_multa: parseFloat(multa.valor_multa_calculado || multa.multa || 0),
+                    status: multa.status_multa,
+                    data_pagamento: multa.data_pagamento,
+                    metodo_pagamento: multa.metodo_pagamento,
+                    comprovante: multa.comprovante_pagamento,
+                    motivo_isencao: multa.motivo_isencao,
+                    isento: multa.isento
+                };
+            });
 
-                            // Calcular dias de atraso para empréstimos ativos em atraso
-                            if (emp.status === 'ativo' && hoje > dataPrevista) {
-                                diasAtraso = Math.ceil((hoje - dataPrevista) / (1000 * 60 * 60 * 24));
-                                valorMulta = diasAtraso * 2.0; // R$ 2,00 por dia
-                            }
-
-                            // Definir status
-                            if (emp.multa > 0 && emp.status === 'devolvido') {
-                                status = 'pago';
-                            } else if (emp.multa > 0) {
-                                status = 'pendente';
-                            } else if (diasAtraso > 0) {
-                                status = 'pendente';
-                            }
-
-                            return {
-                                id: emp.id,
-                                usuario_id: emp.usuario_id,
-                                usuario_nome: emp.usuario_nome,
-                                usuario_matricula: emp.usuario_matricula,
-                                livro_id: emp.livro_id,
-                                livro_titulo: emp.livro_titulo,
-                                livro_autor: emp.livro_autor,
-                                data_emprestimo: emp.data_emprestimo,
-                                data_devolucao_prevista: emp.data_devolucao_prevista,
-                                data_devolucao_efetiva: emp.data_devolucao_efetiva,
-                                dias_atraso: diasAtraso,
-                                valor_multa: valorMulta,
-                                status: status,
-                                data_pagamento: emp.data_devolucao_efetiva, // Pagamento na devolução
-                                metodo_pagamento: emp.multa > 0 ? 'automático' : null,
-                                motivo_isencao: null
-                            };
-                        })
-                        .filter(multa => multa.status !== 'sem_multa' && multa.valor_multa > 0);
-                } else {
-                    throw new Error('Erro ao carregar empréstimos');
-                }
-            } catch (error) {
-                console.error('❌ Erro ao carregar multas reais:', error);
-                // Usar dados de fallback
-                todasMultas = [
-                    {
-                        id: 1,
-                        usuario_id: 1,
-                        usuario_nome: "João Silva",
-                        usuario_matricula: "2023001",
-                        livro_id: 1,
-                        livro_titulo: "Dom Casmurro",
-                        livro_autor: "Machado de Assis",
-                        data_emprestimo: "2024-01-10",
-                        data_devolucao_prevista: "2024-01-25",
-                        data_devolucao_efetiva: "2024-01-30",
-                        dias_atraso: 5,
-                        valor_multa: 10.00,
-                        status: "pendente",
-                        data_pagamento: null,
-                        metodo_pagamento: null,
-                        motivo_isencao: null
-                    },
-                    {
-                        id: 2,
-                        usuario_id: 2,
-                        usuario_nome: "Maria Santos",
-                        usuario_matricula: "2023002",
-                        livro_id: 2,
-                        livro_titulo: "O Cortiço",
-                        livro_autor: "Aluísio Azevedo",
-                        data_emprestimo: "2024-01-15",
-                        data_devolucao_prevista: "2024-01-30",
-                        data_devolucao_efetiva: "2024-02-05",
-                        dias_atraso: 6,
-                        valor_multa: 12.00,
-                        status: "pago",
-                        data_pagamento: "2024-02-05",
-                        metodo_pagamento: "pix",
-                        motivo_isencao: null
-                    },
-                    {
-                        id: 3,
-                        usuario_id: 3,
-                        usuario_nome: "Pedro Oliveira",
-                        usuario_matricula: "2023003",
-                        livro_id: 3,
-                        livro_titulo: "Memórias Póstumas de Brás Cubas",
-                        livro_autor: "Machado de Assis",
-                        data_emprestimo: "2024-02-01",
-                        data_devolucao_prevista: "2024-02-15",
-                        data_devolucao_efetiva: null,
-                        dias_atraso: 3,
-                        valor_multa: 6.00,
-                        status: "pendente",
-                        data_pagamento: null,
-                        metodo_pagamento: null,
-                        motivo_isencao: null
-                    }
-                ];
-            }
+            console.log(`✅ ${todasMultas.length} multas carregadas do banco`);
+        } else {
+            throw new Error('Erro ao carregar multas');
         }
+    } catch (error) {
+        console.error('❌ Erro ao carregar multas reais:', error);
+        // Usar dados de fallback em caso de erro
+        usarDadosFallbackMultas();
+    }
+}
 
         // Atualizar estatísticas - CORRIGIDA para usar multas filtradas
         function atualizarEstatisticas(multasParaCalcular = null) {
@@ -863,41 +792,106 @@
         }
 
         // Confirmar isenção - CORRIGIDA para usar aplicarFiltros
-        async function confirmarIsencao() {
-            const multaId = document.getElementById('multaIsentarId').value;
-            const motivoIsencao = document.getElementById('motivoIsencao').value;
+// Confirmar isenção - VERSÃO CORRIGIDA COM API REAL
+async function confirmarIsencao() {
+    const multaId = document.getElementById('multaIsentarId').value;
+    const motivoIsencao = document.getElementById('motivoIsencao').value;
 
-            if (!motivoIsencao) {
-                mostrarToast('Atenção', 'Informe o motivo da isenção', 'warning');
-                return;
-            }
+    if (!motivoIsencao) {
+        mostrarToast('Atenção', 'Informe o motivo da isenção', 'warning');
+        return;
+    }
 
-            try {
-                mostrarBtnIsentarLoading(true);
+    try {
+        mostrarBtnIsentarLoading(true);
 
-                // Simular isenção de multa
-                const multaIndex = todasMultas.findIndex(m => m.id == multaId);
-                if (multaIndex !== -1) {
-                    todasMultas[multaIndex].status = 'isento';
-                    todasMultas[multaIndex].motivo_isencao = motivoIsencao;
-                    todasMultas[multaIndex].valor_multa = 0;
-                }
+        // Chamar API real para isentar multa
+        const response = await fetch(`${API_BASE}/emprestimos/${multaId}/isentar`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                motivo: motivoIsencao
+            })
+        });
 
-                // Fechar modal
-                bootstrap.Modal.getInstance(document.getElementById('modalIsentarMulta')).hide();
-                
-                // ATUALIZAR APLICANDO FILTROS ATUAIS
-                aplicarFiltros();
-                
-                mostrarToast('Sucesso', 'Multa isenta com sucesso!', 'success');
+        const data = await response.json();
 
-            } catch (error) {
-                console.error('❌ Erro ao isentar multa:', error);
-                mostrarToast('Erro', 'Falha ao isentar multa', 'error');
-            } finally {
-                mostrarBtnIsentarLoading(false);
-            }
+        if (data.success) {
+            // Fechar modal
+            bootstrap.Modal.getInstance(document.getElementById('modalIsentarMulta')).hide();
+            
+            // Recarregar multas do servidor
+            await carregarMultasReais();
+            
+            // Aplicar filtros para atualizar a interface
+            aplicarFiltros();
+            
+            mostrarToast('Sucesso', 'Multa isenta com sucesso!', 'success');
+        } else {
+            throw new Error(data.error);
         }
+
+    } catch (error) {
+        console.error('❌ Erro ao isentar multa:', error);
+        mostrarToast('Erro', 'Falha ao isentar multa: ' + error.message, 'error');
+    } finally {
+        mostrarBtnIsentarLoading(false);
+    }
+}
+
+// Registrar pagamento - VERSÃO CORRIGIDA COM API REAL
+async function registrarPagamento() {
+    const multaId = document.getElementById('multaId').value;
+    const dataPagamento = document.getElementById('dataPagamento').value;
+    const metodoPagamento = document.getElementById('metodoPagamento').value;
+    const comprovante = document.getElementById('comprovante').value;
+
+    if (!dataPagamento || !metodoPagamento) {
+        mostrarToast('Atenção', 'Preencha todos os campos obrigatórios', 'warning');
+        return;
+    }
+
+    try {
+        mostrarBtnRegistrarLoading(true);
+
+        // Chamar API real para registrar pagamento
+        const response = await fetch(`${API_BASE}/emprestimos/${multaId}/pagar`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                metodo_pagamento: metodoPagamento,
+                comprovante: comprovante
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Fechar modal
+            bootstrap.Modal.getInstance(document.getElementById('modalRegistrarPagamento')).hide();
+            
+            // Recarregar multas do servidor
+            await carregarMultasReais();
+            
+            // Aplicar filtros para atualizar a interface
+            aplicarFiltros();
+            
+            mostrarToast('Sucesso', 'Pagamento registrado com sucesso!', 'success');
+        } else {
+            throw new Error(data.error);
+        }
+
+    } catch (error) {
+        console.error('❌ Erro ao registrar pagamento:', error);
+        mostrarToast('Erro', 'Falha ao registrar pagamento: ' + error.message, 'error');
+    } finally {
+        mostrarBtnRegistrarLoading(false);
+    }
+}
 
         // Ver detalhes
         function verDetalhes(multaId) {

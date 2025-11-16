@@ -69,6 +69,8 @@ app.get('/api/debug/tabelas', async (req, res) => {
 // ========== ROTAS DE ESTATÍSTICAS DE MULTAS - VERSÃO CORRIGIDA ==========
 
 // Estatísticas de multas para o dashboard
+// Estatísticas de multas - VERSÃO CORRIGIDA E SIMPLIFICADA
+// Estatísticas de multas - VERSÃO CORRIGIDA SEM ERROS DE SINTAXE
 app.get('/api/estatisticas/multas', async (req, res) => {
   try {
     const { data_inicial, data_final } = req.query;
@@ -80,46 +82,41 @@ app.get('/api/estatisticas/multas', async (req, res) => {
 
     const connection = await mysqlPool.getConnection();
     
-    // Multas pendentes (empréstimos ativos em atraso)
+    // MULTAS PENDENTES (apenas empréstimos ativos em atraso)
     const [multasPendentes] = await connection.execute(`
       SELECT 
-        COUNT(*) as total, 
+        COUNT(*) as total,
         COALESCE(SUM(
-          CASE 
-            WHEN status = 'ativo' AND data_devolucao_prevista < CURDATE() THEN 
-              DATEDIFF(CURDATE(), data_devolucao_prevista) * 2.0
-            ELSE COALESCE(multa, 0)
-          END
-        ), 0) as valor_total 
+          DATEDIFF(CURDATE(), data_devolucao_prevista) * 2.0
+        ), 0) as valor_total
       FROM emprestimos 
-      WHERE (
-        (status = 'ativo' AND data_devolucao_prevista < CURDATE()) 
-        OR (multa > 0 AND status = 'devolvido')
-      )
+      WHERE status = 'ativo' 
+      AND data_devolucao_prevista < CURDATE()
+      AND isento = 0
     `);
     
-    // Multas pagas no período
+    // MULTAS PAGAS no período (já devolvidas e pagas)
     const [multasPagas] = await connection.execute(`
-      SELECT COUNT(*) as total, COALESCE(SUM(multa), 0) as valor_total 
+      SELECT 
+        COUNT(*) as total, 
+        COALESCE(SUM(multa), 0) as valor_total 
       FROM emprestimos 
       WHERE multa > 0 
-      AND status = 'devolvido' 
-      AND data_devolucao_efetiva IS NOT NULL
+      AND status = 'devolvido'
+      AND isento = 0
       AND data_devolucao_efetiva BETWEEN ? AND ?
     `, [dataInicial, dataFinal]);
     
-    // Multas isentas no período (multa = 0 mas com atraso)
+    // MULTAS ISENTAS no período
     const [multasIsentas] = await connection.execute(`
       SELECT COUNT(*) as total
       FROM emprestimos 
-      WHERE multa = 0 
+      WHERE isento = 1
       AND status = 'devolvido'
-      AND data_devolucao_efetiva IS NOT NULL
-      AND data_devolucao_efetiva > data_devolucao_prevista
       AND data_devolucao_efetiva BETWEEN ? AND ?
     `, [dataInicial, dataFinal]);
     
-    // Evolução de multas por mês
+    // EVOLUÇÃO MENSAL de multas pagas
     const [evolucaoMensal] = await connection.execute(`
       SELECT 
         DATE_FORMAT(data_devolucao_efetiva, '%Y-%m') as mes,
@@ -128,13 +125,14 @@ app.get('/api/estatisticas/multas', async (req, res) => {
       FROM emprestimos 
       WHERE multa > 0 
       AND status = 'devolvido'
+      AND isento = 0
       AND data_devolucao_efetiva IS NOT NULL
       AND data_devolucao_efetiva BETWEEN ? AND ?
       GROUP BY DATE_FORMAT(data_devolucao_efetiva, '%Y-%m')
       ORDER BY mes
     `, [dataInicial, dataFinal]);
     
-    // Top usuários com mais multas
+    // TOP USUÁRIOS com mais multas pagas
     const [topUsuariosMultas] = await connection.execute(`
       SELECT 
         u.nome,
@@ -145,6 +143,7 @@ app.get('/api/estatisticas/multas', async (req, res) => {
       INNER JOIN usuarios u ON e.usuario_id = u.id
       WHERE e.multa > 0 
       AND e.status = 'devolvido'
+      AND e.isento = 0
       AND e.data_devolucao_efetiva IS NOT NULL
       AND e.data_devolucao_efetiva BETWEEN ? AND ?
       GROUP BY u.id, u.nome, u.matricula
@@ -154,7 +153,11 @@ app.get('/api/estatisticas/multas', async (req, res) => {
 
     connection.release();
 
-    console.log('✅ Estatísticas de multas carregadas com sucesso');
+    console.log('✅ Estatísticas de multas calculadas:', {
+      pendentes: multasPendentes[0].total,
+      pagas: multasPagas[0].total,
+      isentas: multasIsentas[0].total
+    });
 
     res.json({
       success: true,
@@ -189,14 +192,13 @@ app.get('/api/estatisticas/multas', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erro ao carregar estatísticas de multas',
-      message: error.message,
-      stack: error.stack
+      message: error.message
     });
   }
 });
 
 // Distribuição de multas por valor - VERSÃO CORRIGIDA
-// Distribuição de multas por valor - VERSÃO SUPER SIMPLES
+// Distribuição de multas por valor - VERSÃO CORRIGIDA
 app.get('/api/estatisticas/multas-distribuicao', async (req, res) => {
   try {
     const { data_inicial, data_final } = req.query;
@@ -208,74 +210,67 @@ app.get('/api/estatisticas/multas-distribuicao', async (req, res) => {
 
     const connection = await mysqlPool.getConnection();
     
-    // Primeiro, vamos pegar todas as multas no período
+    // Buscar todas as multas pagas no período (EXCLUINDO ISENTOS)
     const [multas] = await connection.execute(`
       SELECT multa
       FROM emprestimos 
       WHERE multa > 0 
       AND status = 'devolvido'
+      AND isento = 0
       AND data_devolucao_efetiva IS NOT NULL
       AND data_devolucao_efetiva BETWEEN ? AND ?
     `, [dataInicial, dataFinal]);
     
     connection.release();
 
-    console.log(`✅ Encontradas ${multas.length} multas no período`);
+    console.log(`✅ Encontradas ${multas.length} multas para distribuição`);
 
-    // Se não houver multas, retornar arrays vazios
+    // Se não houver multas, retornar estrutura vazia
     if (multas.length === 0) {
       return res.json({
         success: true,
         data: {
           faixas: ['0-5', '6-10', '11-20', '21-50', '50+'],
-          quantidades: [0, 0, 0, 0, 0],
-          valores: [0, 0, 0, 0, 0]
+          quantidades: [0, 0, 0, 0, 0]
         }
       });
     }
 
-    // Calcular distribuição manualmente no JavaScript
+    // Calcular distribuição manualmente
     const distribuicao = {
-      '0-5': { quantidade: 0, valor: 0 },
-      '6-10': { quantidade: 0, valor: 0 },
-      '11-20': { quantidade: 0, valor: 0 },
-      '21-50': { quantidade: 0, valor: 0 },
-      '50+': { quantidade: 0, valor: 0 }
+      '0-5': 0,
+      '6-10': 0,
+      '11-20': 0,
+      '21-50': 0,
+      '50+': 0
     };
 
     multas.forEach(item => {
-      const multa = parseFloat(item.multa);
+      const valor = parseFloat(item.multa);
       
-      if (multa <= 5) {
-        distribuicao['0-5'].quantidade++;
-        distribuicao['0-5'].valor += multa;
-      } else if (multa <= 10) {
-        distribuicao['6-10'].quantidade++;
-        distribuicao['6-10'].valor += multa;
-      } else if (multa <= 20) {
-        distribuicao['11-20'].quantidade++;
-        distribuicao['11-20'].valor += multa;
-      } else if (multa <= 50) {
-        distribuicao['21-50'].quantidade++;
-        distribuicao['21-50'].valor += multa;
+      if (valor <= 5) {
+        distribuicao['0-5']++;
+      } else if (valor <= 10) {
+        distribuicao['6-10']++;
+      } else if (valor <= 20) {
+        distribuicao['11-20']++;
+      } else if (valor <= 50) {
+        distribuicao['21-50']++;
       } else {
-        distribuicao['50+'].quantidade++;
-        distribuicao['50+'].valor += multa;
+        distribuicao['50+']++;
       }
     });
 
     const faixas = ['0-5', '6-10', '11-20', '21-50', '50+'];
-    const quantidades = faixas.map(faixa => distribuicao[faixa].quantidade);
-    const valores = faixas.map(faixa => distribuicao[faixa].valor);
+    const quantidades = faixas.map(faixa => distribuicao[faixa]);
 
-    console.log('✅ Distribuição calculada:', { faixas, quantidades, valores });
+    console.log('📈 Distribuição calculada:', quantidades);
 
     res.json({
       success: true,
       data: {
         faixas: faixas,
-        quantidades: quantidades,
-        valores: valores
+        quantidades: quantidades
       }
     });
     
@@ -284,11 +279,10 @@ app.get('/api/estatisticas/multas-distribuicao', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erro ao carregar distribuição de multas',
-      message: error.message,
-      stack: error.stack
+      message: error.message
     });
   }
-}); 
+});
 
 // Distribuição de multas por valor - VERSÃO CORRIGIDA
 app.get('/api/estatisticas/multas-distribuicao', async (req, res) => {
@@ -419,7 +413,8 @@ app.get('/api/estatisticas/multas-distribuicao', async (req, res) => {
 
 // ========== ROTAS DE ESTATÍSTICAS E RELATÓRIOS ==========
 
-// Estatísticas gerais do sistema
+// Estatísticas gerais do sistema - VERSÃO DEFINITIVAMENTE CORRIGIDA
+// Estatísticas gerais do sistema - VERSÃO TESTADA
 app.get('/api/estatisticas/geral', async (req, res) => {
   try {
     const { data_inicial, data_final } = req.query;
@@ -456,24 +451,26 @@ app.get('/api/estatisticas/geral', async (req, res) => {
       'SELECT COUNT(*) as total FROM reservas WHERE status = "ativa"'
     );
     
-    // Multas arrecadadas no período
+    // Multas arrecadadas no período - CORRIGIDA
     const [multas] = await connection.execute(
       `SELECT COALESCE(SUM(multa), 0) as total FROM emprestimos 
-       WHERE data_devolucao_efetiva BETWEEN ? AND ? AND multa > 0`,
+       WHERE data_devolucao_efetiva BETWEEN ? AND ? 
+       AND multa > 0 
+       AND isento = 0`,
       [dataInicial, dataFinal]
     );
     
     // Novos usuários no período
-// Novos usuários no período
-const [novosUsuarios] = await connection.execute(
-  `SELECT COUNT(*) as total FROM usuarios 
-   WHERE data_cadastro BETWEEN ? AND ?`,
-  [dataInicial, dataFinal]
-);
+    const [novosUsuarios] = await connection.execute(
+      `SELECT COUNT(*) as total FROM usuarios 
+       WHERE data_cadastro BETWEEN ? AND ?`,
+      [dataInicial, dataFinal]
+    );
+    
     // Total de usuários ativos
-const [totalUsuarios] = await connection.execute(
-  'SELECT COUNT(*) as total FROM usuarios WHERE ativo = true'
-);
+    const [totalUsuarios] = await connection.execute(
+      'SELECT COUNT(*) as total FROM usuarios WHERE ativo = true'
+    );
 
     // Total de livros no acervo
     const [totalLivros] = await connection.execute(
@@ -485,7 +482,7 @@ const [totalUsuarios] = await connection.execute(
       'SELECT SUM(quantidade_disponivel) as total FROM livros'
     );
     
-    // Taxa de devolução (empréstimos devolvidos / total de empréstimos que deveriam ser devolvidos)
+    // Taxa de devolução
     const [taxaDevolucao] = await connection.execute(`
       SELECT 
         COUNT(CASE WHEN data_devolucao_efetiva IS NOT NULL AND data_devolucao_efetiva <= data_devolucao_prevista THEN 1 END) as devolvidos_prazo,
@@ -511,6 +508,8 @@ const [totalUsuarios] = await connection.execute(
     const taxaDevolucaoPercent = taxaDevolucao[0].total_devolvidos > 0 
       ? ((taxaDevolucao[0].devolvidos_prazo / taxaDevolucao[0].total_devolvidos) * 100).toFixed(1)
       : 0;
+
+    console.log('✅ Estatísticas gerais calculadas com sucesso');
 
     res.json({
       success: true,
@@ -621,6 +620,7 @@ app.get('/api/estatisticas/livros-categoria', async (req, res) => {
 });
 
 // Top 10 livros mais emprestados para gráfico de barras
+// Top 10 livros mais emprestados para gráfico de barras - CORRIGIDA
 app.get('/api/estatisticas/top-livros', async (req, res) => {
   try {
     const { data_inicial, data_final } = req.query;
@@ -705,6 +705,7 @@ app.get('/api/estatisticas/emprestimos-usuario-tipo', async (req, res) => {
 
 // Relatório detalhado diário
 // RELATÓRIO DIÁRIO - VERSÃO CORRIGIDA
+// RELATÓRIO DIÁRIO - VERSÃO CORRIGIDA
 app.get('/api/estatisticas/relatorio-diario', async (req, res) => {
   try {
     const { data_inicial, data_final } = req.query;
@@ -716,13 +717,13 @@ app.get('/api/estatisticas/relatorio-diario', async (req, res) => {
 
     const connection = await mysqlPool.getConnection();
     
-    // CONSULTA SIMPLIFICADA E CORRIGIDA
+    // CONSULTA CORRIGIDA
     const [dados] = await connection.execute(`
       SELECT 
         DATE(data_emprestimo) as data,
         COUNT(*) as emprestimos,
         COUNT(CASE WHEN data_devolucao_efetiva IS NOT NULL THEN 1 END) as devolucoes,
-        COALESCE(SUM(CASE WHEN data_devolucao_efetiva IS NOT NULL THEN multa ELSE 0 END), 0) as multas,
+        COALESCE(SUM(CASE WHEN data_devolucao_efetiva IS NOT NULL AND isento = 0 THEN multa ELSE 0 END), 0) as multas,
         COUNT(DISTINCT usuario_id) as usuarios_ativos
       FROM emprestimos 
       WHERE data_emprestimo BETWEEN ? AND ?
@@ -739,7 +740,7 @@ app.get('/api/estatisticas/relatorio-diario', async (req, res) => {
         data: item.data,
         emprestimos: item.emprestimos,
         devolucoes: item.devolucoes,
-        reservas: 0, // Valor fixo por enquanto
+        reservas: 0,
         multas: parseFloat(item.multas),
         usuarios_ativos: item.usuarios_ativos
       }))
@@ -750,13 +751,13 @@ app.get('/api/estatisticas/relatorio-diario', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erro ao carregar relatório diário',
-      message: error.message,
-      stack: error.stack // Adiciona stack trace para debug
+      message: error.message
     });
   }
 });
 
 // Estatísticas de empréstimos em atraso
+// Estatísticas de empréstimos em atraso - CORRIGIDA
 app.get('/api/estatisticas/emprestimos-atraso', async (req, res) => {
   try {
     const connection = await mysqlPool.getConnection();
@@ -764,7 +765,12 @@ app.get('/api/estatisticas/emprestimos-atraso', async (req, res) => {
     const [dados] = await connection.execute(`
       SELECT 
         COUNT(*) as total_atraso,
-        COALESCE(SUM(multa), 0) as multa_pendente,
+        COALESCE(SUM(
+          CASE 
+            WHEN isento = 0 THEN DATEDIFF(CURDATE(), data_devolucao_prevista) * 2.0
+            ELSE 0
+          END
+        ), 0) as multa_pendente,
         AVG(DATEDIFF(CURDATE(), data_devolucao_prevista)) as dias_atraso_medio
       FROM emprestimos 
       WHERE status = 'ativo' AND data_devolucao_prevista < CURDATE()
@@ -805,31 +811,46 @@ app.get('/api/multas', async (req, res) => {
                 u.matricula as usuario_matricula,
                 l.titulo as livro_titulo,
                 l.autor as livro_autor,
+                -- CALCULAR MULTAS PENDENTES
                 CASE 
                     WHEN e.status = 'ativo' AND e.data_devolucao_prevista < CURDATE() THEN 
                         DATEDIFF(CURDATE(), e.data_devolucao_prevista) * 2.0
-                    WHEN e.multa > 0 THEN e.multa
-                    ELSE 0
+                    ELSE COALESCE(e.multa, 0)
                 END as valor_multa_calculado,
+                -- DEFINIR STATUS
                 CASE 
-                    WHEN e.multa > 0 AND e.status = 'devolvido' THEN 'pago'
-                    WHEN e.multa > 0 THEN 'pendente'
+                    WHEN e.isento THEN 'isento'
+                    WHEN e.data_pagamento IS NOT NULL THEN 'pago'
                     WHEN e.status = 'ativo' AND e.data_devolucao_prevista < CURDATE() THEN 'pendente'
+                    WHEN e.multa > 0 THEN 'pendente'
                     ELSE 'sem_multa'
                 END as status_multa
             FROM emprestimos e
             INNER JOIN usuarios u ON e.usuario_id = u.id
             INNER JOIN livros l ON e.livro_id = l.id
-            WHERE e.multa > 0 OR (e.status = 'ativo' AND e.data_devolucao_prevista < CURDATE())
-            ORDER BY e.data_devolucao_prevista ASC
+            WHERE e.isento = TRUE 
+               OR e.data_pagamento IS NOT NULL 
+               OR (e.status = 'ativo' AND e.data_devolucao_prevista < CURDATE())
+               OR e.multa > 0
+            ORDER BY 
+                CASE 
+                    WHEN status_multa = 'pendente' THEN 1
+                    WHEN status_multa = 'pago' THEN 2
+                    WHEN status_multa = 'isento' THEN 3
+                    ELSE 4
+                END,
+                e.data_devolucao_prevista ASC
         `);
         
         connection.release();
 
+        // Filtrar apenas multas válidas
+        const multasValidas = multas.filter(m => m.status_multa !== 'sem_multa');
+
         res.json({
             success: true,
-            data: multas.filter(m => m.status_multa !== 'sem_multa'),
-            total: multas.filter(m => m.status_multa !== 'sem_multa').length
+            data: multasValidas,
+            total: multasValidas.length
         });
     } catch (error) {
         console.error('❌ Erro em /api/multas:', error);
@@ -2203,6 +2224,148 @@ app.delete('/api/livros/:id', async (req, res) => {
   }
 });
 
+// Rota para isentar multa - VERSÃO CORRIGIDA
+app.put('/api/emprestimos/:id/isentar', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { motivo } = req.body;
+
+        console.log(`📝 Isentando multa do empréstimo ${id}, motivo: ${motivo}`);
+
+        const connection = await mysqlPool.getConnection();
+        
+        // Verificar se empréstimo existe
+        const [emprestimo] = await connection.execute(
+            'SELECT * FROM emprestimos WHERE id = ?',
+            [id]
+        );
+        
+        if (emprestimo.length === 0) {
+            connection.release();
+            return res.status(404).json({
+                success: false,
+                error: 'Empréstimo não encontrado'
+            });
+        }
+
+        // Atualizar empréstimo com isenção
+        await connection.execute(
+            `UPDATE emprestimos 
+             SET multa = 0,
+                 isento = TRUE,
+                 motivo_isencao = ?,
+                 data_isencao = CURDATE()
+             WHERE id = ?`,
+            [motivo, id]
+        );
+        
+        connection.release();
+
+        console.log('✅ Multa isentada com sucesso');
+
+        res.json({
+            success: true,
+            message: 'Multa isenta com sucesso!'
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao isentar multa:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erro ao isentar multa',
+            message: error.message
+        });
+    }
+});
+
+// Rota para registrar pagamento de multa - VERSÃO CORRIGIDA
+// Registrar pagamento de multa - ROTA CORRIGIDA
+app.put('/api/emprestimos/:id/pagar', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { metodo_pagamento, comprovante } = req.body;
+
+        console.log(`💰 Registrando pagamento do empréstimo ${id}`);
+
+        const connection = await mysqlPool.getConnection();
+        
+        // Verificar se empréstimo existe
+        const [emprestimo] = await connection.execute(
+            'SELECT * FROM emprestimos WHERE id = ?',
+            [id]
+        );
+        
+        if (emprestimo.length === 0) {
+            connection.release();
+            return res.status(404).json({
+                success: false,
+                error: 'Empréstimo não encontrado'
+            });
+        }
+
+        const emp = emprestimo[0];
+
+        // Calcular valor da multa se for empréstimo ativo em atraso
+        let valorMulta = emp.multa || 0;
+        
+        if (emp.status === 'ativo' && new Date(emp.data_devolucao_prevista) < new Date()) {
+            const diasAtraso = Math.ceil((new Date() - new Date(emp.data_devolucao_prevista)) / (1000 * 60 * 60 * 24));
+            valorMulta = diasAtraso * 2.0;
+        }
+
+        if (valorMulta <= 0) {
+            connection.release();
+            return res.status(400).json({
+                success: false,
+                error: 'Este empréstimo não possui multa pendente'
+            });
+        }
+
+        // Registrar pagamento
+        await connection.execute(
+            `UPDATE emprestimos 
+             SET multa = ?,
+                 metodo_pagamento = ?,
+                 comprovante_pagamento = ?,
+                 data_pagamento = CURDATE(),
+                 status = 'devolvido',
+                 data_devolucao_efetiva = CURDATE()
+             WHERE id = ?`,
+            [valorMulta, metodo_pagamento, comprovante, id]
+        );
+
+        // Devolver livro ao acervo se estava emprestado
+        if (emp.status === 'ativo') {
+            await connection.execute(
+                'UPDATE livros SET quantidade_disponivel = quantidade_disponivel + 1 WHERE id = ?',
+                [emp.livro_id]
+            );
+        }
+        
+        connection.release();
+
+        console.log('✅ Pagamento registrado com sucesso');
+
+        res.json({
+            success: true,
+            message: `Pagamento de R$ ${valorMulta.toFixed(2)} registrado com sucesso!`,
+            data: {
+                valor_pago: valorMulta,
+                metodo_pagamento: metodo_pagamento
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao registrar pagamento:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erro ao registrar pagamento',
+            message: error.message
+        });
+    }
+});
+
+
 // ========== ROTA DE DEVOLUÇÃO (ORIGINAL) ==========
 app.put('/api/emprestimos/:id/devolucao', async (req, res) => {
   try {
@@ -2689,7 +2852,6 @@ app.get('/api/debug/banco', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨');
   console.log('🚀 SERVIDOR RODANDO COM SUCESSO!');
   console.log(`📊 Banco: ${process.env.DB_NAME}`);
   console.log(`🌐 URL: http://localhost:${PORT}`);
@@ -2697,5 +2859,4 @@ app.listen(PORT, () => {
   console.log(`   📚 Livros: http://localhost:${PORT}/api/livros`);
   console.log(`   📈 Dashboard: http://localhost:${PORT}/api/dashboard/estatisticas`);
   console.log(`   🔍 Health: http://localhost:${PORT}/api/health`);
-  console.log('✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨');
 });
